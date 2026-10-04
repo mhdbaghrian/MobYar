@@ -1,0 +1,6 @@
+{
+  "name": "مباحثه یار | کارگاه و مباحثه صرف افعال عربی",
+  "description": "سامانه هوشمند مدیریت جلسات مباحثه کلاسی صرف، پرسش و پاسخ دوره‌ای، صرف معکوس و نقطه‌زنی ابواب با کارنامه تفصیلی",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
