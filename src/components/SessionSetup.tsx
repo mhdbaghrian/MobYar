@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Users,
   User,
@@ -23,13 +23,26 @@ import {
   GraduationCap,
   Flame,
   ArrowRight,
+  Edit2,
+  Check,
+  RotateCcw,
 } from 'lucide-react';
 import { BabId, QuestionType, SessionConfig, Student, StudyMode } from '../types/sarf';
 import { ABWAB_LIST } from '../data/abwab';
+import { UserProfile, LearningStage } from '../types/gamification';
+import { AVATAR_OPTIONS, getAvatarById } from '../data/avatars';
+import { LearningJourneyView } from './LearningJourneyView';
+import { saveProfile } from '../utils/userProfileManager';
 
 interface SessionSetupProps {
   onStartSession: (config: SessionConfig) => void;
   onOpenWorkshop: () => void;
+  activeProfile: UserProfile;
+  allProfiles: UserProfile[];
+  onOpenProfileModal: () => void;
+  onStartStageExam: (stage: LearningStage) => void;
+  onProfileUpdated?: (updated: UserProfile) => void;
+  initialTab?: 'quick' | 'journey' | 'custom';
 }
 
 const DEFAULT_STUDENT_NAMES = ['علی', 'محمد', 'حسین', 'مهدی', 'صادق', 'فاطمه', 'زهرا', 'زینب'];
@@ -166,9 +179,15 @@ const QUICK_PRESETS: QuickPreset[] = [
 export const SessionSetup: React.FC<SessionSetupProps> = ({
   onStartSession,
   onOpenWorkshop,
+  activeProfile,
+  allProfiles,
+  onOpenProfileModal,
+  onStartStageExam,
+  onProfileUpdated,
+  initialTab = 'quick',
 }) => {
-  // Navigation Tab: Quick Presets vs Custom Wizard
-  const [setupTab, setSetupTab] = useState<'quick' | 'custom'>('quick');
+  // Navigation Tabs: Quick Presets, Learning Journey, Custom Wizard
+  const [setupTab, setSetupTab] = useState<'quick' | 'journey' | 'custom'>(initialTab);
 
   // Domain filter in custom mode
   const [domainFilter, setDomainFilter] = useState<'both' | 'verbs' | 'nouns'>('both');
@@ -178,10 +197,34 @@ export const SessionSetup: React.FC<SessionSetupProps> = ({
 
   // Students list
   const [students, setStudents] = useState<Student[]>([
-    { id: 's1', name: 'دانشجو', avatarSeed: '1', color: STUDENT_COLORS[0] },
+    {
+      id: activeProfile.id,
+      name: activeProfile.nickname,
+      avatarSeed: '1',
+      color: activeProfile.color || STUDENT_COLORS[0],
+      avatarId: activeProfile.avatarId,
+      profileId: activeProfile.id,
+    },
   ]);
   const [newStudentName, setNewStudentName] = useState('');
-  const [facilitatorId, setFacilitatorId] = useState<string>('s1');
+  const [facilitatorId, setFacilitatorId] = useState<string>(activeProfile.id);
+
+  // Sync first student with active profile changes
+  useEffect(() => {
+    setStudents((prev) => {
+      if (prev.length === 0) return prev;
+      const updated = [...prev];
+      updated[0] = {
+        ...updated[0],
+        id: activeProfile.id,
+        name: activeProfile.nickname,
+        color: activeProfile.color || STUDENT_COLORS[0],
+        avatarId: activeProfile.avatarId,
+        profileId: activeProfile.id,
+      };
+      return updated;
+    });
+  }, [activeProfile]);
 
   // Selected Abwab
   const [selectedBabs, setSelectedBabs] = useState<BabId[]>([
@@ -215,18 +258,50 @@ export const SessionSetup: React.FC<SessionSetupProps> = ({
   const handleLaunchPreset = (preset: QuickPreset) => {
     let presetStudents: Student[] = [];
 
+    const leadStudent: Student = {
+      id: activeProfile.id,
+      name: activeProfile.nickname,
+      avatarSeed: '1',
+      color: activeProfile.color || STUDENT_COLORS[0],
+      avatarId: activeProfile.avatarId,
+      profileId: activeProfile.id,
+    };
+
     if (preset.studentsCount === 1) {
-      presetStudents = [{ id: 's1', name: students[0]?.name || 'دانشجو', avatarSeed: '1', color: STUDENT_COLORS[0] }];
+      presetStudents = [leadStudent];
     } else if (preset.studentsCount === 2) {
+      const secondProf = allProfiles.find((p) => p.id !== activeProfile.id);
       presetStudents = [
-        { id: 's1', name: students[0]?.name || 'علی', avatarSeed: '1', color: STUDENT_COLORS[0] },
-        { id: 's2', name: 'محمد', avatarSeed: '2', color: STUDENT_COLORS[1] },
+        leadStudent,
+        {
+          id: secondProf?.id || 's2',
+          name: secondProf?.nickname || 'محمد',
+          avatarSeed: '2',
+          color: secondProf?.color || STUDENT_COLORS[1],
+          avatarId: secondProf?.avatarId || 'adeeb',
+          profileId: secondProf?.id,
+        },
       ];
     } else {
+      const otherProfs = allProfiles.filter((p) => p.id !== activeProfile.id);
       presetStudents = [
-        { id: 's1', name: 'علی', avatarSeed: '1', color: STUDENT_COLORS[0] },
-        { id: 's2', name: 'محمد', avatarSeed: '2', color: STUDENT_COLORS[1] },
-        { id: 's3', name: 'حسین', avatarSeed: '3', color: STUDENT_COLORS[2] },
+        leadStudent,
+        {
+          id: otherProfs[0]?.id || 's2',
+          name: otherProfs[0]?.nickname || 'محمد',
+          avatarSeed: '2',
+          color: otherProfs[0]?.color || STUDENT_COLORS[1],
+          avatarId: otherProfs[0]?.avatarId || 'adeeb',
+          profileId: otherProfs[0]?.id,
+        },
+        {
+          id: otherProfs[1]?.id || 's3',
+          name: otherProfs[1]?.nickname || 'حسین',
+          avatarSeed: '3',
+          color: otherProfs[1]?.color || STUDENT_COLORS[2],
+          avatarId: otherProfs[1]?.avatarId || 'sarfyar',
+          profileId: otherProfs[1]?.id,
+        },
       ];
     }
 
@@ -253,17 +328,19 @@ export const SessionSetup: React.FC<SessionSetupProps> = ({
   };
 
   // Handle student count change
-  const handleAddStudent = (name?: string) => {
-    const studentName = (name || newStudentName).trim();
+  const handleAddStudent = (name?: string, existingProfile?: UserProfile) => {
+    const studentName = existingProfile ? existingProfile.nickname : (name || newStudentName).trim();
     if (!studentName) return;
 
-    const newId = `s_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
-    const nextColor = STUDENT_COLORS[students.length % STUDENT_COLORS.length];
+    const newId = existingProfile ? existingProfile.id : `s_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+    const nextColor = existingProfile ? existingProfile.color : STUDENT_COLORS[students.length % STUDENT_COLORS.length];
     const newStudent: Student = {
       id: newId,
       name: studentName,
       avatarSeed: (students.length + 1).toString(),
       color: nextColor,
+      avatarId: existingProfile ? existingProfile.avatarId : 'talib',
+      profileId: existingProfile?.id,
     };
 
     const updated = [...students, newStudent];
@@ -290,29 +367,38 @@ export const SessionSetup: React.FC<SessionSetupProps> = ({
   };
 
   const setGroupSize = (count: number) => {
+    const leadStudent: Student = {
+      id: activeProfile.id,
+      name: activeProfile.nickname,
+      avatarSeed: '1',
+      color: activeProfile.color || STUDENT_COLORS[0],
+      avatarId: activeProfile.avatarId,
+      profileId: activeProfile.id,
+    };
+
     if (count === 1) {
       setMode('solo');
-      setStudents([{ id: 's1', name: 'دانشجو', avatarSeed: '1', color: STUDENT_COLORS[0] }]);
+      setStudents([leadStudent]);
     } else if (count === 2) {
       setMode('circle');
       setStudents([
-        { id: 's1', name: 'علی', avatarSeed: '1', color: STUDENT_COLORS[0] },
-        { id: 's2', name: 'محمد', avatarSeed: '2', color: STUDENT_COLORS[1] },
+        leadStudent,
+        { id: 's2', name: 'محمد', avatarSeed: '2', color: STUDENT_COLORS[1], avatarId: 'adeeb' },
       ]);
     } else if (count === 3) {
       setMode('circle');
       setStudents([
-        { id: 's1', name: 'علی', avatarSeed: '1', color: STUDENT_COLORS[0] },
-        { id: 's2', name: 'محمد', avatarSeed: '2', color: STUDENT_COLORS[1] },
-        { id: 's3', name: 'حسین', avatarSeed: '3', color: STUDENT_COLORS[2] },
+        leadStudent,
+        { id: 's2', name: 'محمد', avatarSeed: '2', color: STUDENT_COLORS[1], avatarId: 'adeeb' },
+        { id: 's3', name: 'حسین', avatarSeed: '3', color: STUDENT_COLORS[2], avatarId: 'sarfyar' },
       ]);
     } else if (count === 4) {
       setMode('circle');
       setStudents([
-        { id: 's1', name: 'علی', avatarSeed: '1', color: STUDENT_COLORS[0] },
-        { id: 's2', name: 'محمد', avatarSeed: '2', color: STUDENT_COLORS[1] },
-        { id: 's3', name: 'حسین', avatarSeed: '3', color: STUDENT_COLORS[2] },
-        { id: 's4', name: 'مهدی', avatarSeed: '4', color: STUDENT_COLORS[3] },
+        leadStudent,
+        { id: 's2', name: 'محمد', avatarSeed: '2', color: STUDENT_COLORS[1], avatarId: 'adeeb' },
+        { id: 's3', name: 'حسین', avatarSeed: '3', color: STUDENT_COLORS[2], avatarId: 'sarfyar' },
+        { id: 's4', name: 'مهدی', avatarSeed: '4', color: STUDENT_COLORS[3], avatarId: 'muhaqqiq' },
       ]);
     }
   };
@@ -338,14 +424,6 @@ export const SessionSetup: React.FC<SessionSetupProps> = ({
 
   const selectMazidOnly = () => {
     setSelectedBabs(ABWAB_LIST.filter((b) => b.category === 'thulathi_mazid').map((b) => b.id));
-  };
-
-  const selectRubaiOnly = () => {
-    setSelectedBabs(
-      ABWAB_LIST.filter((b) => b.category === 'rubai_mujarrad' || b.category === 'rubai_mazid').map(
-        (b) => b.id
-      )
-    );
   };
 
   // Toggle Question Type
@@ -400,51 +478,86 @@ export const SessionSetup: React.FC<SessionSetupProps> = ({
   };
 
   const totalQuestions = students.length * roundsPerStudent;
+  const currentAvatar = getAvatarById(activeProfile.avatarId);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 py-2 px-2 sm:px-4" dir="rtl">
-      {/* Hero Welcome Header */}
-      <div className="bg-gradient-to-l from-emerald-900 via-teal-900 to-stone-900 rounded-3xl p-6 sm:p-7 text-white shadow-xl relative overflow-hidden">
-        <div className="relative z-10 max-w-2xl space-y-2.5">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-emerald-200 text-xs font-medium border border-white/15">
-            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            <span>سامانه هوشمند آزمون و مباحثه صرف عربی</span>
+      {/* Student Identity Card / Profile Bar */}
+      <div className="bg-white rounded-2xl border border-stone-200 p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center text-2xl shadow-sm shrink-0">
+            {currentAvatar.emoji}
           </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-arabic">
-            آغاز جلسه تمرین و مباحثه صرف
-          </h2>
-          <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed">
-            یک بسته آماده را با ۱ کلیک شروع کنید یا آزمون اختصاصی خود را بر اساس ابواب و مشتقات دلخواه بسازید.
-          </p>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-extrabold text-stone-900 text-sm sm:text-base truncate">
+                {activeProfile.nickname}
+              </span>
+              <span className="text-[11px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full shrink-0">
+                سطح {activeProfile.level} · {activeProfile.title}
+              </span>
+              {activeProfile.streak > 0 && (
+                <span className="inline-flex items-center gap-1 text-[11px] text-amber-700 font-bold bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md shrink-0">
+                  <Flame className="w-3 h-3 fill-amber-500 text-amber-500" />
+                  {activeProfile.streak} روز
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-stone-400 mt-0.5">
+              کارنامه‌ها و سوابق با این نام و آواتار صادر و ثبت می‌شوند.
+            </p>
+          </div>
         </div>
+
+        <button
+          type="button"
+          onClick={onOpenProfileModal}
+          className="w-full sm:w-auto py-2.5 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200/80 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-2xs shrink-0"
+        >
+          <User className="w-4 h-4 text-emerald-700" />
+          <span>پروفایل، تکمیل و تعویض حساب</span>
+        </button>
       </div>
 
-      {/* Mode Switcher Tabs */}
-      <div className="grid grid-cols-2 gap-2 p-1.5 bg-stone-200/70 rounded-2xl">
+      {/* Mode Switcher Tabs (3 Top Tabs) */}
+      <div className="grid grid-cols-3 gap-2 p-1.5 bg-stone-200/70 rounded-2xl">
         <button
           type="button"
           onClick={() => setSetupTab('quick')}
-          className={`py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+          className={`py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer ${
             setupTab === 'quick'
               ? 'bg-white text-emerald-950 shadow-md ring-1 ring-stone-900/5'
               : 'text-stone-600 hover:text-stone-900'
           }`}
         >
           <Zap className={`w-4 h-4 ${setupTab === 'quick' ? 'text-amber-500 fill-amber-500' : ''}`} />
-          <span>🚀 آزمون‌های آماده و سریع (۱ کلیک)</span>
+          <span className="truncate">🚀 آزمون‌های آماده</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSetupTab('journey')}
+          className={`py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer ${
+            setupTab === 'journey'
+              ? 'bg-white text-emerald-950 shadow-md ring-1 ring-stone-900/5'
+              : 'text-stone-600 hover:text-stone-900'
+          }`}
+        >
+          <GraduationCap className={`w-4 h-4 ${setupTab === 'journey' ? 'text-emerald-700' : ''}`} />
+          <span className="truncate">🗺️ سیر مرحله‌ای (۰ تا ۱۰۰)</span>
         </button>
 
         <button
           type="button"
           onClick={() => setSetupTab('custom')}
-          className={`py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+          className={`py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer ${
             setupTab === 'custom'
               ? 'bg-white text-emerald-950 shadow-md ring-1 ring-stone-900/5'
               : 'text-stone-600 hover:text-stone-900'
           }`}
         >
           <SlidersHorizontal className="w-4 h-4 text-emerald-700" />
-          <span>🛠️ ساخت آزمون سفارشی</span>
+          <span className="truncate">🛠️ آزمون سفارشی</span>
         </button>
       </div>
 
@@ -459,7 +572,7 @@ export const SessionSetup: React.FC<SessionSetupProps> = ({
               <span>بسته‌های پیشنهادی و آزمون‌های استاندارد:</span>
             </span>
             <span className="text-[11px] text-stone-400">
-              با کلیک روی «شروع فوری»، آزمون بلافاصله شروع می‌شود.
+              با کلیک روی «شروع فوری»، آزمون بلافاصله با هویت {activeProfile.nickname} آغاز می‌شود.
             </span>
           </div>
 
@@ -532,7 +645,20 @@ export const SessionSetup: React.FC<SessionSetupProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 2: CUSTOM SETUP WIZARD */}
+      {/* TAB 2: LEARNING JOURNEY (0 TO 100 ROADMAP) */}
+      {/* ========================================================================= */}
+      {setupTab === 'journey' && (
+        <div className="animate-in fade-in duration-150">
+          <LearningJourneyView
+            activeProfile={activeProfile}
+            onStartStageExam={onStartStageExam}
+            onOpenWorkshop={onOpenWorkshop}
+          />
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 3: CUSTOM SETUP WIZARD */}
       {/* ========================================================================= */}
       {setupTab === 'custom' && (
         <div className="space-y-6 animate-in fade-in duration-150">
@@ -544,7 +670,7 @@ export const SessionSetup: React.FC<SessionSetupProps> = ({
                   ۱
                 </span>
                 <h3 className="font-bold text-stone-900 text-base">
-                  حالت آزمون و تعداد افراد
+                  حالت آزمون و افراد شرکت‌کننده
                 </h3>
               </div>
 
@@ -587,7 +713,7 @@ export const SessionSetup: React.FC<SessionSetupProps> = ({
                   <User className="w-4 h-4 text-emerald-700" />
                 </div>
                 <p className="text-[11px] text-stone-500">
-                  تمرین تستی ۴ گزینه‌ای، فلش‌کارت یا صوتی برای مطالعه فردی.
+                  تمرین تستی ۴ گزینه‌ای، فلش‌کارت یا صوتی برای {activeProfile.nickname}.
                 </p>
               </button>
 
@@ -597,11 +723,7 @@ export const SessionSetup: React.FC<SessionSetupProps> = ({
                 onClick={() => {
                   setMode('circle');
                   if (students.length === 1) {
-                    setStudents([
-                      { id: 's1', name: 'علی', avatarSeed: '1', color: STUDENT_COLORS[0] },
-                      { id: 's2', name: 'محمد', avatarSeed: '2', color: STUDENT_COLORS[1] },
-                      { id: 's3', name: 'حسین', avatarSeed: '3', color: STUDENT_COLORS[2] },
-                    ]);
+                    setGroupSize(3);
                   }
                 }}
                 className={`p-3.5 rounded-xl border text-right transition-all cursor-pointer flex flex-col justify-between gap-2 ${
@@ -625,11 +747,7 @@ export const SessionSetup: React.FC<SessionSetupProps> = ({
                 onClick={() => {
                   setMode('facilitator');
                   if (students.length === 1) {
-                    setStudents([
-                      { id: 's1', name: 'استاد', avatarSeed: '1', color: STUDENT_COLORS[0] },
-                      { id: 's2', name: 'دانشجو ۱', avatarSeed: '2', color: STUDENT_COLORS[1] },
-                      { id: 's3', name: 'دانشجو ۲', avatarSeed: '3', color: STUDENT_COLORS[2] },
-                    ]);
+                    setGroupSize(3);
                   }
                 }}
                 className={`p-3.5 rounded-xl border text-right transition-all cursor-pointer flex flex-col justify-between gap-2 ${
@@ -655,14 +773,19 @@ export const SessionSetup: React.FC<SessionSetupProps> = ({
                   اسامی شرکت‌کنندگان ({students.length} نفر):
                 </span>
                 <div className="flex flex-wrap items-center gap-2">
-                  {students.map((student) => (
+                  {students.map((student, idx) => (
                     <div
                       key={student.id}
                       className="flex items-center gap-2 px-3 py-1.5 bg-stone-100 rounded-xl text-xs font-medium"
                     >
                       <span className={`w-2.5 h-2.5 rounded-full ${student.color}`} />
                       <span>{student.name}</span>
-                      {students.length > 1 && (
+                      {idx === 0 && (
+                        <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1 rounded">
+                          شما
+                        </span>
+                      )}
+                      {students.length > 1 && idx > 0 && (
                         <button
                           type="button"
                           onClick={() => handleRemoveStudent(student.id)}
@@ -808,7 +931,7 @@ export const SessionSetup: React.FC<SessionSetupProps> = ({
             )}
           </div>
 
-          {/* Step 3: Question Types with Easy Presets */}
+          {/* Step 3: Question Types */}
           <div className="bg-white rounded-2xl p-5 sm:p-6 border border-stone-200 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-stone-100">
               <div className="flex items-center gap-2.5">
@@ -1023,7 +1146,7 @@ export const SessionSetup: React.FC<SessionSetupProps> = ({
           <div className="sticky bottom-4 z-20 bg-stone-900 text-white p-4 rounded-2xl shadow-2xl border border-stone-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="space-y-0.5">
               <span className="text-xs font-bold text-emerald-300 block">
-                خلاصه آزمون شما:
+                خلاصه آزمون برای {activeProfile.nickname}:
               </span>
               <span className="text-xs text-stone-300">
                 {students.length} دانشجو · {selectedBabs.length} باب · {selectedTypes.length} نوع سوال · مجموعاً {totalQuestions} پرسش

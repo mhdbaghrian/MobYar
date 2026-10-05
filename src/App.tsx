@@ -13,6 +13,7 @@ import { FourteenSeeghehModal } from './components/FourteenSeeghehModal';
 import { SessionHistoryModal } from './components/SessionHistoryModal';
 import { VerbExplorerModal } from './components/VerbExplorerModal';
 import { NounExplorerModal } from './components/NounExplorerModal';
+import { UserProfileModal } from './components/UserProfileModal';
 import {
   BabId,
   Question,
@@ -22,6 +23,14 @@ import {
   SessionSummary,
   Student,
 } from './types/sarf';
+import { UserProfile, LearningStage } from './types/gamification';
+import {
+  getActiveProfile,
+  getAllProfiles,
+  recordSessionToActiveProfile,
+  recordStageCompletionToProfile,
+  saveProfile,
+} from './utils/userProfileManager';
 import { generateQuestion } from './utils/questionGenerator';
 
 const STORAGE_KEY_HISTORY = 'mobahese_sessions_history_v1';
@@ -30,6 +39,7 @@ const STORAGE_KEY_SOUND = 'mobahese_sound_enabled_v1';
 export default function App() {
   // Navigation & View state
   const [currentView, setCurrentView] = useState<'setup' | 'drill' | 'report'>('setup');
+  const [setupInitialTab, setSetupInitialTab] = useState<'quick' | 'journey' | 'custom'>('quick');
 
   // Modals state
   const [isWorkshopOpen, setIsWorkshopOpen] = useState(false);
@@ -37,6 +47,18 @@ export default function App() {
   const [isVerbLibraryOpen, setIsVerbLibraryOpen] = useState(false);
   const [isNounLibraryOpen, setIsNounLibraryOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
+  // User Accounts & Gamification State
+  const [activeProfile, setActiveProfile] = useState<UserProfile>(() => getActiveProfile());
+  const [allProfiles, setAllProfiles] = useState<UserProfile[]>(() => getAllProfiles());
+
+  // Badge / Reward Toast Notification
+  const [achievementToast, setAchievementToast] = useState<{
+    icon: string;
+    title: string;
+    xp: number;
+  } | null>(null);
 
   // Sound preference
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
@@ -95,6 +117,11 @@ export default function App() {
     } catch {}
   }, [history]);
 
+  const refreshProfilesList = () => {
+    setAllProfiles(getAllProfiles());
+    setActiveProfile(getActiveProfile());
+  };
+
   // Start a new session from config
   const handleStartSession = (newConfig: SessionConfig) => {
     const totalQ = newConfig.students.length * newConfig.roundsPerStudent;
@@ -112,6 +139,30 @@ export default function App() {
     setResults([]);
     setSessionStartTime(Date.now());
     setCurrentView('drill');
+  };
+
+  // Start Stage Exam from 0-to-100 Journey
+  const handleStartStageExam = (stage: LearningStage) => {
+    const stageConfig: SessionConfig = {
+      mode: 'solo',
+      students: [
+        {
+          id: activeProfile.id,
+          name: activeProfile.nickname,
+          avatarSeed: '1',
+          color: activeProfile.color,
+          avatarId: activeProfile.avatarId,
+          profileId: activeProfile.id,
+        },
+      ],
+      selectedBabIds: stage.targetBabIds,
+      selectedQuestionTypes: stage.targetQuestionTypes,
+      roundsPerStudent: stage.questionCount,
+      soloAnswerMethod: 'choice',
+      stageExamId: stage.id,
+    };
+
+    handleStartSession(stageConfig);
   };
 
   // Record a question result
@@ -143,8 +194,40 @@ export default function App() {
       totalScore,
       maxScore,
       durationSeconds: duration,
+      stageExamId: config.stageExamId,
     };
 
+    // 1. Record to active profile
+    const { profile: updatedProf, newBadges, xpEarned } = recordSessionToActiveProfile(
+      summary,
+      config.students[0]?.id || activeProfile.id
+    );
+
+    // 2. If it was a stage exam, record stage completion & star progress
+    if (config.stageExamId) {
+      const stageRes = recordStageCompletionToProfile(config.stageExamId, totalScore, maxScore);
+      setActiveProfile(stageRes.profile);
+      if (stageRes.newBadges.length > 0) {
+        setAchievementToast({
+          icon: stageRes.newBadges[0].badgeIcon,
+          title: stageRes.newBadges[0].badgeTitle,
+          xp: stageRes.xpEarned,
+        });
+        setTimeout(() => setAchievementToast(null), 5000);
+      }
+    } else {
+      setActiveProfile(updatedProf);
+      if (newBadges.length > 0) {
+        setAchievementToast({
+          icon: newBadges[0].badgeIcon,
+          title: newBadges[0].badgeTitle,
+          xp: xpEarned,
+        });
+        setTimeout(() => setAchievementToast(null), 5000);
+      }
+    }
+
+    setAllProfiles(getAllProfiles());
     setActiveSummary(summary);
     setHistory((prev) => [summary, ...prev].slice(0, 30)); // Keep last 30
     setCurrentView('report');
@@ -186,17 +269,22 @@ export default function App() {
 
   // Select a Bab directly from Workshop modal for a quick session
   const handleSelectBabForSession = (babId: BabId) => {
+    const defaultStudent: Student = {
+      id: activeProfile.id,
+      name: activeProfile.nickname,
+      avatarSeed: '1',
+      color: activeProfile.color,
+      avatarId: activeProfile.avatarId,
+      profileId: activeProfile.id,
+    };
+
     if (!config) {
-      // Setup defaults with 2 students
       const defaultConfig: SessionConfig = {
-        mode: 'circle',
-        students: [
-          { id: 's1', name: 'علی', avatarSeed: '1', color: 'bg-emerald-600' },
-          { id: 's2', name: 'رضا', avatarSeed: '2', color: 'bg-blue-600' },
-        ],
+        mode: 'solo',
+        students: [defaultStudent],
         selectedBabIds: [babId],
         selectedQuestionTypes: ['sequential', 'reverse', 'targeted', 'tense_inversion'],
-        roundsPerStudent: 3,
+        roundsPerStudent: 4,
         soloAnswerMethod: 'choice',
       };
       handleStartSession(defaultConfig);
@@ -212,7 +300,16 @@ export default function App() {
   const handleSelectNounTypeForSession = (nounType: QuestionType) => {
     const nounConfig: SessionConfig = {
       mode: 'solo',
-      students: [{ id: 's1', name: 'دانشجو', avatarSeed: '1', color: 'bg-teal-600' }],
+      students: [
+        {
+          id: activeProfile.id,
+          name: activeProfile.nickname,
+          avatarSeed: '1',
+          color: activeProfile.color,
+          avatarId: activeProfile.avatarId,
+          profileId: activeProfile.id,
+        },
+      ],
       selectedBabIds: ["if'al", "taf'il", "mufa'alah"],
       selectedQuestionTypes: [nounType],
       roundsPerStudent: 6,
@@ -224,7 +321,16 @@ export default function App() {
   const handleStartMudaafDrill = () => {
     const mudaafConfig: SessionConfig = {
       mode: 'solo',
-      students: [{ id: 's1', name: 'دانشجو', avatarSeed: '1', color: 'bg-amber-600' }],
+      students: [
+        {
+          id: activeProfile.id,
+          name: activeProfile.nickname,
+          avatarSeed: '1',
+          color: activeProfile.color,
+          avatarId: activeProfile.avatarId,
+          profileId: activeProfile.id,
+        },
+      ],
       selectedBabIds: ['mujarrad_nasara', 'mujarrad_daraba', 'mujarrad_alima', "if'al", "istif'al"],
       selectedQuestionTypes: ['mudaaf_fakk', 'mudaaf_conjugation', 'amr', 'targeted'],
       roundsPerStudent: 8,
@@ -263,10 +369,16 @@ export default function App() {
         onOpenVerbLibrary={() => setIsVerbLibraryOpen(true)}
         onOpenNounLibrary={() => setIsNounLibraryOpen(true)}
         onOpenHistory={() => setIsHistoryOpen(true)}
+        onOpenProfile={() => setIsProfileModalOpen(true)}
+        onOpenJourney={() => {
+          setSetupInitialTab('journey');
+          setCurrentView('setup');
+        }}
         onResetSession={currentView === 'drill' ? handleEarlyEndSession : undefined}
         isSessionActive={currentView === 'drill'}
         soundEnabled={soundEnabled}
         onToggleSound={() => setSoundEnabled(!soundEnabled)}
+        activeProfile={activeProfile}
       />
 
       {/* Main View Router */}
@@ -275,6 +387,15 @@ export default function App() {
           <SessionSetup
             onStartSession={handleStartSession}
             onOpenWorkshop={() => setIsWorkshopOpen(true)}
+            activeProfile={activeProfile}
+            allProfiles={allProfiles}
+            onOpenProfileModal={() => setIsProfileModalOpen(true)}
+            onStartStageExam={handleStartStageExam}
+            onProfileUpdated={(up) => {
+              setActiveProfile(up);
+              setAllProfiles(getAllProfiles());
+            }}
+            initialTab={setupInitialTab}
           />
         )}
 
@@ -296,9 +417,17 @@ export default function App() {
         {currentView === 'report' && activeSummary && (
           <ReportCard
             summary={activeSummary}
+            activeProfile={activeProfile}
             onRetryMissed={handleRetryMissed}
             onRestartSameConfig={handleRestartSameConfig}
-            onNewSession={() => setCurrentView('setup')}
+            onNewSession={() => {
+              setSetupInitialTab('quick');
+              setCurrentView('setup');
+            }}
+            onOpenJourney={() => {
+              setSetupInitialTab('journey');
+              setCurrentView('setup');
+            }}
           />
         )}
       </main>
@@ -306,8 +435,18 @@ export default function App() {
       {/* Footer */}
       <footer className="py-6 border-t border-stone-200 text-center text-xs text-stone-500 bg-white">
         <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>مباحثه یار | سامانه جامع کارگاه صرف افعال و اسماء عربی</span>
+          <span>مباحثه یار | سامانه جامع کارگاه، سیر خودآموز ۰ تا ۱۰۰ و آزمون‌های صرف عربی</span>
           <div className="flex flex-wrap items-center justify-center gap-3">
+            <button
+              onClick={() => {
+                setSetupInitialTab('journey');
+                setCurrentView('setup');
+              }}
+              className="text-amber-800 font-bold hover:underline cursor-pointer"
+            >
+              سیر مرحله‌بندی (۰ تا ۱۰۰)
+            </button>
+            <span>·</span>
             <button
               onClick={() => setIsVerbLibraryOpen(true)}
               className="text-emerald-700 font-bold hover:underline cursor-pointer"
@@ -319,7 +458,7 @@ export default function App() {
               onClick={() => setIsNounLibraryOpen(true)}
               className="text-teal-700 font-bold hover:underline cursor-pointer"
             >
-              بانک اسماء و مشتقات
+              بانک مشتقات
             </button>
             <span>·</span>
             <button
@@ -337,14 +476,34 @@ export default function App() {
             </button>
             <span>·</span>
             <button
-              onClick={() => setIsHistoryOpen(true)}
-              className="hover:text-emerald-700 transition-colors cursor-pointer"
+              onClick={() => setIsProfileModalOpen(true)}
+              className="text-emerald-800 font-bold hover:underline cursor-pointer"
             >
-              سوابق جلسات
+              پروفایل و نشان‌ها
             </button>
           </div>
         </div>
       </footer>
+
+      {/* Achievement & Badge Unlock Toast */}
+      {achievementToast && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-stone-900/95 backdrop-blur-md text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-amber-400/40 text-xs flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="w-10 h-10 rounded-xl bg-amber-400 text-stone-900 flex items-center justify-center text-2xl shadow-sm shrink-0 font-bold">
+            {achievementToast.icon}
+          </div>
+          <div>
+            <span className="text-[11px] text-amber-300 font-bold block">
+              🎉 نشان و دستاورد جدید باز شد!
+            </span>
+            <span className="font-extrabold text-sm text-white block">
+              {achievementToast.title}
+            </span>
+            <span className="text-[10px] text-emerald-300">
+              +{achievementToast.xp} امتیاز تجربه (XP) به حساب شما افزوده شد
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Offline Toast Notification */}
       {offlineToast && (
@@ -361,6 +520,22 @@ export default function App() {
       )}
 
       {/* Modals */}
+      <UserProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        activeProfile={activeProfile}
+        allProfiles={allProfiles}
+        onProfileUpdated={(updated) => {
+          setActiveProfile(updated);
+          refreshProfilesList();
+        }}
+        onProfileSwitched={(newProf) => {
+          setActiveProfile(newProf);
+          refreshProfilesList();
+        }}
+        onProfilesListChanged={refreshProfilesList}
+      />
+
       <VerbExplorerModal
         isOpen={isVerbLibraryOpen}
         onClose={() => setIsVerbLibraryOpen(false)}

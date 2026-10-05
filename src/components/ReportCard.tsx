@@ -15,43 +15,61 @@ import {
   ChevronUp,
   Sparkles,
   BookOpen,
+  Printer,
+  Star,
+  Flame,
+  ArrowRight,
 } from 'lucide-react';
 import { BabId, Question, QuestionResult, QuestionType, SessionSummary } from '../types/sarf';
 import { ABWAB_LIST, getBabById } from '../data/abwab';
+import { UserProfile } from '../types/gamification';
+import { getAvatarById } from '../data/avatars';
+import { LEARNING_STAGES } from '../data/learningStages';
 
 interface ReportCardProps {
   summary: SessionSummary;
+  activeProfile?: UserProfile;
   onRetryMissed?: (missedQuestions: Question[]) => void;
   onRestartSameConfig: () => void;
   onNewSession: () => void;
+  onOpenJourney?: () => void;
 }
 
 export const ReportCard: React.FC<ReportCardProps> = ({
   summary,
+  activeProfile,
   onRetryMissed,
   onRestartSameConfig,
   onNewSession,
+  onOpenJourney,
 }) => {
   const [copied, setCopied] = useState(false);
   const [expandedStudentId, setExpandedStudentId] = useState<string | null>(
     summary.config.students[0]?.id || null
   );
 
+  const { results, config } = summary;
+  const stageExamId = summary.stageExamId || config.stageExamId;
+  const stageObj = stageExamId ? LEARNING_STAGES.find((s) => s.id === stageExamId) : null;
+
+  const totalScore = results.reduce((sum, r) => sum + r.score, 0);
+  const maxScore = results.length * 10;
+  const overallAccuracy = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
+  const isStagePassed = stageExamId ? overallAccuracy >= (stageObj?.minPassScorePct || 75) : false;
+
   // Trigger celebration confetti on mount
   useEffect(() => {
     try {
       confetti({
-        particleCount: 80,
-        spread: 70,
+        particleCount: isStagePassed || overallAccuracy >= 80 ? 100 : 50,
+        spread: 80,
         origin: { y: 0.6 },
         colors: ['#059669', '#10b981', '#34d399', '#f59e0b', '#3b82f6'],
       });
     } catch {
       // Ignore if unavailable
     }
-  }, []);
-
-  const { results, config } = summary;
+  }, [isStagePassed, overallAccuracy]);
 
   // Student metrics
   const studentMetrics = config.students.map((student) => {
@@ -106,8 +124,12 @@ export const ReportCard: React.FC<ReportCardProps> = ({
       weaknesses.push('صرف معکوس (چالش تسلط ناخودآگاه)');
     }
 
+    // Avatar
+    const avatar = getAvatarById(student.avatarId || activeProfile?.avatarId);
+
     return {
       student,
+      avatar,
       studentResults,
       totalQ,
       earnedScore,
@@ -131,58 +153,120 @@ export const ReportCard: React.FC<ReportCardProps> = ({
 
   // Copy text summary to clipboard
   const handleCopySummary = () => {
-    let text = `📜 کارنامه جلسه مباحثه صرف عربی\n📅 تاریخ: ${new Date(
-      summary.date
-    ).toLocaleDateString('fa-IR')}\n`;
-    text += `👥 تعداد شرکت‌کنندگان: ${config.students.length} نفر\n`;
-    text += `🎯 کل سوالات پرسیده شده: ${results.length} سوال\n\n`;
+    let text = `📜 کارنامه جلسه مباحثه صرف عربی\n`;
+    if (stageObj) {
+      text += `🎯 آزمون مرحله: ${stageObj.title}\n`;
+      text += `🏁 نتیجه مرحله: ${isStagePassed ? 'قبولی و ارتقا ⭐' : 'نیاز به تمرین مجدد'}\n`;
+    }
+    text += `👤 دانشجو: ${config.students[0]?.name || activeProfile?.nickname || 'دانشجو'}\n`;
+    text += `📅 تاریخ: ${new Date(summary.date).toLocaleDateString('fa-IR')}\n`;
+    text += `🎯 کل سوالات: ${results.length} سوال | نمره کل: ${overallAccuracy}٪\n\n`;
 
-    text += `🏆 ستاره مباحثه: ${topPerformer.student.name} (با ${topPerformer.accuracy}٪ تسلط)\n\n`;
-    text += `📊 نتایج تفکیکی دانشجویان:\n`;
-
-    studentMetrics.forEach((m, idx) => {
-      text += `${idx + 1}. ${m.student.name}: ${m.earnedScore}/${m.maxScore} (${m.accuracy}٪)\n`;
-      Object.entries(m.babBreakdown).forEach(([bId, stat]) => {
-        try {
-          const b = getBabById(bId as BabId);
-          const p = Math.round((stat.score / stat.total) * 100);
-          text += `   - باب ${b.name}: ${p}٪\n`;
-        } catch {}
+    if (config.students.length > 1) {
+      text += `🏆 ستاره جلسه: ${topPerformer.student.name} (با ${topPerformer.accuracy}٪ تسلط)\n\n`;
+      text += `📊 نتایج تفکیکی شرکت‌کنندگان:\n`;
+      studentMetrics.forEach((m, idx) => {
+        text += `${idx + 1}. ${m.student.name}: ${m.earnedScore}/${m.maxScore} (${m.accuracy}٪)\n`;
       });
-      if (m.weaknesses.length > 0) {
-        text += `   ⚠️ نیاز به تمرین: ${m.weaknesses.join('، ')}\n`;
-      }
-    });
+    }
 
-    text += `\n✨ مباحثه یار | سامانه هوشمند کارگاه صرف افعال عربی`;
+    text += `\n✨ مباحثه یار | سامانه هوشمند کارگاه و سیر مرحله‌ای صرف`;
 
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6 py-4 px-2 sm:px-4" dir="rtl">
-      {/* Hero Victory Card */}
-      <div className="bg-gradient-to-l from-emerald-800 via-emerald-700 to-stone-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="relative z-10 space-y-4">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-emerald-200 text-xs font-semibold backdrop-blur-xs">
-            <Trophy className="w-3.5 h-3.5 text-amber-300" />
-            <span>پایان جلسه مباحثه و کارگاه صرف</span>
+      {/* Stage Exam Notification Banner (if applicable) */}
+      {stageObj && (
+        <div
+          className={`rounded-3xl p-5 sm:p-6 text-white shadow-lg border flex flex-col sm:flex-row items-center justify-between gap-4 ${
+            isStagePassed
+              ? 'bg-gradient-to-l from-emerald-800 to-teal-900 border-emerald-500'
+              : 'bg-gradient-to-l from-amber-900 to-stone-900 border-amber-600'
+          }`}
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center text-3xl border border-white/20 shrink-0">
+              {isStagePassed ? '🎉' : '📖'}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-white/20 font-bold">
+                  آزمون رسمی مرحله {stageObj.id}
+                </span>
+                <span className="text-xs text-emerald-200">
+                  حداقل قبولی: {stageObj.minPassScorePct}٪
+                </span>
+              </div>
+              <h3 className="text-lg sm:text-xl font-extrabold mt-1">{stageObj.title}</h3>
+              <p className="text-xs text-white/80 mt-0.5">
+                {isStagePassed
+                  ? `تبریک! شما با کسب ${overallAccuracy}٪ حدنصاب قبولی را کسب کردید و مرحله بعد برای شما باز شد.`
+                  : `نمره شما ${overallAccuracy}٪ شد (حداقل قبولی: ${stageObj.minPassScorePct}٪). پس از مرور نکات مجدداً آزمون دهید.`}
+              </p>
+            </div>
           </div>
 
+          <div className="flex items-center gap-2 shrink-0">
+            {onOpenJourney && (
+              <button
+                onClick={onOpenJourney}
+                className="py-2.5 px-4 bg-white/20 hover:bg-white/30 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <span>مشاهده سیر مراحل</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Hero Victory Card */}
+      <div className="bg-gradient-to-l from-emerald-800 via-teal-800 to-stone-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+        <div className="relative z-10 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-emerald-200 text-xs font-semibold backdrop-blur-xs mb-2">
+                <Trophy className="w-3.5 h-3.5 text-amber-300" />
+                <span>کارنامه رسمی جلسه مباحثه و کارگاه صرف</span>
+              </div>
               <h2 className="text-2xl sm:text-3xl font-extrabold font-arabic">
-                کارنامه نهایی مباحثه‌گران
+                {config.mode === 'solo' && activeProfile
+                  ? `کارنامه اختصاصی ${activeProfile.nickname}`
+                  : 'کارنامه نهایی مباحثه‌گران'}
               </h2>
               <p className="text-xs sm:text-sm text-emerald-100 mt-1">
                 تحلیل جامع عملکرد در ابواب، صرف ترتیبی، صرف معکوس و صیغه‌ها
               </p>
             </div>
 
+            {/* Profile Avatar Badge in Header */}
+            {activeProfile && config.mode === 'solo' && (
+              <div className="bg-white/15 backdrop-blur-md rounded-2xl p-4 border border-white/20 flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-white/20 text-white flex items-center justify-center font-bold text-2xl shadow-xs shrink-0">
+                  {getAvatarById(activeProfile.avatarId).emoji}
+                </div>
+                <div>
+                  <span className="text-[11px] text-amber-200 block font-medium">
+                    پروفایل دانشجو:
+                  </span>
+                  <span className="text-base font-extrabold">{activeProfile.nickname}</span>
+                  <span className="text-xs text-emerald-200 block">
+                    سطح {activeProfile.level} · {activeProfile.title}
+                  </span>
+                </div>
+              </div>
+            )}
+
             {config.students.length > 1 && (
-              <div className="bg-white/15 backdrop-blur-xs rounded-2xl p-4 border border-white/20 flex items-center gap-3">
+              <div className="bg-white/15 backdrop-blur-md rounded-2xl p-4 border border-white/20 flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl bg-amber-400 text-amber-950 flex items-center justify-center font-bold text-xl shadow-xs shrink-0">
                   <Award className="w-6 h-6" />
                 </div>
@@ -190,9 +274,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({
                   <span className="text-[11px] text-amber-200 block font-medium">
                     مباحثه‌گر برتر جلسه:
                   </span>
-                  <span className="text-base font-extrabold">
-                    {topPerformer.student.name}
-                  </span>
+                  <span className="text-base font-extrabold">{topPerformer.student.name}</span>
                   <span className="text-xs text-emerald-200 block">
                     {topPerformer.accuracy}٪ تسلط کامل
                   </span>
@@ -221,9 +303,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({
             </div>
             <div className="p-3 bg-white/10 rounded-xl backdrop-blur-xs">
               <span className="text-stone-300 block mb-0.5">نیاز به مرور:</span>
-              <span className="font-bold text-lg text-rose-300">
-                {missedResults.length}
-              </span>
+              <span className="font-bold text-lg text-rose-300">{missedResults.length}</span>
             </div>
           </div>
         </div>
@@ -239,7 +319,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({
             {copied ? (
               <>
                 <Check className="w-4 h-4 text-emerald-600" />
-                <span className="text-emerald-700">کپی شد!</span>
+                <span className="text-emerald-700 font-bold">کپی شد!</span>
               </>
             ) : (
               <>
@@ -247,6 +327,15 @@ export const ReportCard: React.FC<ReportCardProps> = ({
                 <span>کپی گزارش برای ایتا / تلگرام / بله</span>
               </>
             )}
+          </button>
+
+          <button
+            onClick={handlePrint}
+            className="px-3.5 py-2 bg-white border border-stone-200 hover:bg-stone-50 rounded-xl text-xs font-semibold text-stone-700 flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+            title="چاپ کارنامه"
+          >
+            <Printer className="w-4 h-4 text-stone-500" />
+            <span className="hidden sm:inline">چاپ کارنامه</span>
           </button>
 
           {missedQuestions.length > 0 && onRetryMissed && (
@@ -265,13 +354,13 @@ export const ReportCard: React.FC<ReportCardProps> = ({
             onClick={onRestartSameConfig}
             className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
           >
-            ادامه مباحثه با همین افراد
+            تکرار همین آزمون
           </button>
           <button
             onClick={onNewSession}
             className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer shadow-xs"
           >
-            جلسه جدید
+            جلسه یا مرحله جدید
           </button>
         </div>
       </div>
@@ -280,9 +369,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <BarChart3 className="w-5 h-5 text-emerald-700" />
-          <h3 className="font-bold text-stone-900 text-base">
-            کارنامه تحلیلی هر مباحثه‌گر
-          </h3>
+          <h3 className="font-bold text-stone-900 text-base">کارنامه تحلیلی دانشجویان</h3>
         </div>
 
         <div className="space-y-3">
@@ -295,25 +382,26 @@ export const ReportCard: React.FC<ReportCardProps> = ({
               >
                 {/* Header Row */}
                 <div
-                  onClick={() =>
-                    setExpandedStudentId(isExpanded ? null : m.student.id)
-                  }
+                  onClick={() => setExpandedStudentId(isExpanded ? null : m.student.id)}
                   className="p-4 sm:p-5 flex items-center justify-between cursor-pointer hover:bg-stone-50/50 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div
-                      className={`w-10 h-10 rounded-xl text-white font-bold flex items-center justify-center ${m.student.color} shadow-xs`}
-                    >
-                      {m.student.name.charAt(0)}
+                    <div className="w-11 h-11 rounded-2xl bg-stone-100 border border-stone-200 flex items-center justify-center text-2xl shadow-xs shrink-0">
+                      {m.avatar?.emoji || '🎓'}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-stone-900">
+                        <span className="font-extrabold text-sm sm:text-base text-stone-900">
                           {m.student.name}
                         </span>
                         {m.accuracy >= 85 && (
                           <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
                             مسلط و ممتاز
+                          </span>
+                        )}
+                        {m.student.profileId && (
+                          <span className="text-[10px] bg-stone-100 text-stone-600 px-2 py-0.5 rounded-full font-medium">
+                            ثبت در پروفایل
                           </span>
                         )}
                       </div>
@@ -325,7 +413,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({
 
                   <div className="flex items-center gap-4">
                     <div className="text-left">
-                      <div className="font-extrabold text-base text-stone-900 tabular-nums">
+                      <div className="font-extrabold text-base sm:text-lg text-stone-900 tabular-nums">
                         {m.accuracy}٪
                       </div>
                       <div className="text-[11px] text-stone-400 tabular-nums">
@@ -352,9 +440,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({
                         {Object.entries(m.babBreakdown).map(([bId, stat]) => {
                           const bab = getBabById(bId as BabId);
                           const pct =
-                            stat.total > 0
-                              ? Math.round((stat.score / stat.total) * 100)
-                              : 0;
+                            stat.total > 0 ? Math.round((stat.score / stat.total) * 100) : 0;
                           return (
                             <div
                               key={bId}
@@ -401,7 +487,8 @@ export const ReportCard: React.FC<ReportCardProps> = ({
                         <div>
                           <span className="font-bold">پیشنهاد کارگاهی برای تقویت:</span>
                           <p className="mt-0.5">
-                            دانشجو در مباحث {m.weaknesses.join(' و ')} نیاز به تکرار مجدد و صرف معکوس دارد تا تسلط خودکار حاصل شود.
+                            دانشجو در مباحث {m.weaknesses.join(' و ')} نیاز به تکرار مجدد و صرف معکوس دارد
+                            تا تسلط خودکار حاصل شود.
                           </p>
                         </div>
                       </div>
@@ -429,9 +516,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({
                 مرور سوالات اشتباه شده در جلسه ({missedResults.length} پرسش)
               </h3>
             </div>
-            <span className="text-xs text-stone-500">
-              کلید صحیح و توضیح برای بازآموزی
-            </span>
+            <span className="text-xs text-stone-500">کلید صحیح و توضیح برای بازآموزی</span>
           </div>
 
           <div className="space-y-3">
@@ -441,9 +526,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({
                 className="p-4 rounded-xl border border-stone-200 bg-stone-50 space-y-2 text-right"
               >
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-stone-800">
-                    دانشجو: {r.studentName}
-                  </span>
+                  <span className="font-bold text-stone-800">دانشجو: {r.studentName}</span>
                   <span className="text-stone-500">
                     باب {r.question.babName} · {r.question.title}
                   </span>
@@ -462,9 +545,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({
                   </div>
                 </div>
 
-                <p className="text-xs text-stone-600">
-                  {r.question.explanation}
-                </p>
+                <p className="text-xs text-stone-600">{r.question.explanation}</p>
               </div>
             ))}
           </div>

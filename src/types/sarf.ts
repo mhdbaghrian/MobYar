@@ -179,6 +179,8 @@ export interface Student {
   name: string;
   avatarSeed: string;
   color: string;
+  avatarId?: string;
+  profileId?: string;
 }
 
 export interface QuestionResult {
@@ -207,6 +209,7 @@ export interface SessionConfig {
   selectedQuestionTypes: QuestionType[];
   roundsPerStudent: number;
   soloAnswerMethod: 'choice' | 'flashcard' | 'voice';
+  stageExamId?: number;
 }
 
 export interface SessionSummary {
@@ -217,4 +220,5 @@ export interface SessionSummary {
   totalScore: number;
   maxScore: number;
   durationSeconds: number;
+  stageExamId?: number;
 }
