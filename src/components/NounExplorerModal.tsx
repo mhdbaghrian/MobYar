@@ -43,6 +43,8 @@ export const NounExplorerModal: React.FC<NounExplorerModalProps> = ({
           wazn.includes(q) ||
           meaning.includes(q) ||
           typeName.includes(q) ||
+          (n.babName && n.babName.includes(q)) ||
+          (n.ruleDescription && n.ruleDescription.includes(q)) ||
           (n.jamTaksir && n.jamTaksir.includes(q))
         );
       }
@@ -170,12 +172,12 @@ export const NounExplorerModal: React.FC<NounExplorerModalProps> = ({
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredNouns.map((noun) => {
+              {filteredNouns.map((noun, idx) => {
                 const isSelectedForPlay = playingWord === noun.singularMasc;
 
                 return (
                   <div
-                    key={noun.id}
+                    key={`${noun.id}_${idx}`}
                     className="bg-white rounded-2xl border border-stone-200/90 shadow-xs hover:border-teal-400 hover:shadow-md transition-all p-4 space-y-3.5"
                   >
                     {/* Top Row: Word, Wazn, Audio */}

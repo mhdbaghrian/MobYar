@@ -192,9 +192,9 @@ export const VerbExplorerModal: React.FC<VerbExplorerModalProps> = ({
               </button>
             </div>
           ) : (
-            filteredVerbs.map((v) => {
+            filteredVerbs.map((v, idx) => {
               const bab = getBabById(v.babId);
-              const verbKey = `${v.root}_${v.babId}`;
+              const verbKey = `${v.root}_${v.babId}_${v.madi[0]}_${idx}`;
               const isExpanded = expandedVerbKey === verbKey;
               const isRubai = bab.category === 'rubai_mujarrad' || bab.category === 'rubai_mazid';
 

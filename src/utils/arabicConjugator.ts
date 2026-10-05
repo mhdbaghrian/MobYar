@@ -653,7 +653,7 @@ export function generateMudaafMujarrad(
   // صیغه‌های ۱ تا ۵ با ادغام واجب: مَدَّ، مَدَّا، مَدُّوا، مَدَّتْ، مَدَّتا
   // صیغه‌های ۶ تا ۱۴ با فک ادغام: مَدَدْنَ، مَدَدْتَ، مَدَدْتُما...
   const madiBaseMerged = `${f}َ${l}َّ`;
-  const madiBaseFakk = ainMadi === 'ِ' ? `${f}َ${l}ِ${l}ْ` : `${f}َ${l}َ${l}ْ`;
+  const madiBaseFakk = ainMadi === 'ِ' ? `${f}َ${l}ِ${l}ْ` : ainMadi === 'ُ' ? `${f}َ${l}ُ${l}ْ` : `${f}َ${l}َ${l}ْ`;
 
   const madi = [
     `${madiBaseMerged}َ`, // 1. هُوَ مَدَّ
@@ -806,12 +806,12 @@ export function generateMudaafAugmented(root: string, babId: BabId): FullConjuga
     amr12 = `أَ${f}ْ${l}ِ${l}ْنَ`;
   } else if (babId === "ifti'al") {
     // افتعال: اِمْتَدَّ - يَمْتَدُّ
-    mBase = `اِمْ${f}َ${l}َّ`;
-    mFakk = `اِمْ${f}َ${l}َ${l}ْ`;
-    muBase = `َمْ${f}َ${l}َّ`;
-    muFakk = `َمْ${f}َ${l}ِ${l}ْ`;
-    amr7 = `اِمْ${f}َ${l}َّ`;
-    amr12 = `اِمْ${f}َ${l}ِ${l}ْنَ`;
+    mBase = `اِ${f}ْتَ${l}َّ`;
+    mFakk = `اِ${f}ْتَ${l}َ${l}ْ`;
+    muBase = `َ${f}ْتَ${l}َّ`;
+    muFakk = `َ${f}ْتَ${l}ِ${l}ْ`;
+    amr7 = `اِ${f}ْتَ${l}َّ`;
+    amr12 = `اِ${f}ْتَ${l}ِ${l}ْنَ`;
   } else if (babId === "infi'al") {
     // انفعال: اِنْشَقَّ - يَنْشَقُّ
     mBase = `اِنْ${f}َ${l}َّ`;
@@ -828,9 +828,36 @@ export function generateMudaafAugmented(root: string, babId: BabId): FullConjuga
     muFakk = `َسْتَ${f}ْ${l}ِ${l}ْ`;
     amr7 = `اِسْتَ${f}ِ${l}َّ`;
     amr12 = `اِسْتَ${f}ْ${l}ِ${l}ْنَ`;
+  } else if (babId === "mufa'alah") {
+    // مفاعلة: حَاجَّ - يُحَاجُّ
+    mBase = `${f}ا${l}َّ`;
+    mFakk = `${f}ا${l}َ${l}ْ`;
+    muBase = `ُ${f}ا${l}َّ`;
+    muFakk = `ُ${f}ا${l}ِ${l}ْ`;
+    amr7 = `${f}ا${l}َّ`;
+    amr12 = `${f}ا${l}ِ${l}ْنَ`;
+  } else if (babId === "tafa'ul") {
+    // تفاعل: تَمَاسَّ - يَتَمَاسُّ
+    mBase = `تَ${f}ا${l}َّ`;
+    mFakk = `تَ${f}ا${l}َ${l}ْ`;
+    muBase = `َتَ${f}ا${l}َّ`;
+    muFakk = `َتَ${f}ا${l}َ${l}ْ`;
+    amr7 = `تَ${f}ا${l}َّ`;
+    amr12 = `تَ${f}ا${l}َ${l}ْنَ`;
+  } else if (babId === "if'ilal") {
+    // افعلال: اِحْمَرَّ - يَحْمَرُّ
+    mBase = `اِ${f}ْ${l}َ${l}َّ`;
+    mFakk = `اِ${f}ْ${l}َ${l}َ${l}ْ`;
+    muBase = `َ${f}ْ${l}َ${l}َّ`;
+    muFakk = `َ${f}ْ${l}َ${l}ِ${l}ْ`;
+    amr7 = `اِ${f}ْ${l}َ${l}َّ`;
+    amr12 = `اِ${f}ْ${l}َ${l}ِ${l}ْنَ`;
   } else {
     return null;
   }
+
+  const muBaseKasrah = muBase.replace(/َّ$/, 'ِّ');
+  const amr7Kasrah = amr7.replace(/َّ$/, 'ِّ');
 
   const madi = [
     `${mBase}َ`, `${mBase}ا`, `${mBase}ُوا`, `${mBase}َتْ`, `${mBase}َتا`, `${mFakk}نَ`,
@@ -840,22 +867,91 @@ export function generateMudaafAugmented(root: string, babId: BabId): FullConjuga
 
   const mudari = [
     `ي${muBase}ُ`, `ي${muBase}انِ`, `ي${muBase}ونَ`, `ت${muBase}ُ`, `ت${muBase}انِ`, `ي${muFakk}نَ`,
-    `ت${muBase}ُ`, `ت${muBase}انِ`, `ت${muBase}ونَ`, `ت${f}ِ${l}ِّينَ`, `ت${muBase}انِ`, `ت${muFakk}نَ`,
+    `ت${muBase}ُ`, `ت${muBase}انِ`, `ت${muBase}ونَ`, `ت${muBaseKasrah}ينَ`, `ت${muBase}انِ`, `ت${muFakk}نَ`,
     `أ${muBase}ُ`, `ن${muBase}ُ`
   ];
 
   const amr = [
     `لِي${muBase}َ`, `لِي${muBase}انِ`, `لِي${muBase}ونَ`, `لِت${muBase}َ`, `لِت${muBase}انِ`, `لِي${muFakk}نَ`,
-    `${amr7}َ`, `${amr7}ا`, `${amr7}ُوا`, `${amr7.slice(0, -1)}ِي`, `${amr7}ا`, `${amr12}`,
+    `${amr7}َ`, `${amr7}ا`, `${amr7}ُوا`, `${amr7Kasrah}ي`, `${amr7}ا`, `${amr12}`,
     `لِأ${muBase}َ`, `لِن${muBase}َ`
   ];
 
   const nahy = [
     `لا ي${muBase}َ`, `لا ي${muBase}ا`, `لا ي${muBase}وا`, `لا ت${muBase}َ`, `لا ت${muBase}ا`, `لا ي${muFakk}نَ`,
-    `لا ت${muBase}َ`, `لا ت${muBase}ا`, `لا ت${muBase}وا`, `لا ت${f}ِ${l}ِي`, `لا ت${muBase}ا`, `لا ت${muFakk}نَ`,
+    `لا ت${muBase}َ`, `لا ت${muBase}ا`, `لا ت${muBase}وا`, `لا ت${muBaseKasrah}ي`, `لا ت${muBase}ا`, `لا ت${muFakk}نَ`,
     `لا أ${muBase}َ`, `لا ن${muBase}َ`
   ];
 
-  return { madi, mudari, amr, nahy };
+  let madiMajhul: string[] | undefined;
+  let mudariMajhul: string[] | undefined;
+
+  if (babId === "if'al") {
+    const majBase = `أُ${f}ِ${l}َّ`;
+    const majFakk = `أُ${f}ْ${l}ِ${l}ْ`;
+    madiMajhul = [
+      `${majBase}َ`, `${majBase}ا`, `${majBase}ُوا`, `${majBase}َتْ`, `${majBase}َتا`, `${majFakk}نَ`,
+      `${majFakk}تَ`, `${majFakk}تُما`, `${majFakk}تُمْ`, `${majFakk}تِ`, `${majFakk}تُما`, `${majFakk}تُنَّ`,
+      `${majFakk}تُ`, `${majFakk}نا`
+    ];
+    const muMajBase = `ُ${f}َ${l}َّ`;
+    const muMajFakk = `ُ${f}ْ${l}َ${l}ْ`;
+    const muMajKasrah = `ُ${f}َ${l}ِّ`;
+    mudariMajhul = [
+      `ي${muMajBase}ُ`, `ي${muMajBase}انِ`, `ي${muMajBase}ونَ`, `ت${muMajBase}ُ`, `ت${muMajBase}انِ`, `ي${muMajFakk}نَ`,
+      `ت${muMajBase}ُ`, `ت${muMajBase}انِ`, `ت${muMajBase}ونَ`, `ت${muMajKasrah}ينَ`, `ت${muMajBase}انِ`, `ت${muMajFakk}نَ`,
+      `أ${muMajBase}ُ`, `ن${muMajBase}ُ`
+    ];
+  } else if (babId === "istif'al") {
+    const majBase = `اُسْتُ${f}ِ${l}َّ`;
+    const majFakk = `اُسْتُ${f}ْ${l}ِ${l}ْ`;
+    madiMajhul = [
+      `${majBase}َ`, `${majBase}ا`, `${majBase}ُوا`, `${majBase}َتْ`, `${majBase}َتا`, `${majFakk}نَ`,
+      `${majFakk}تَ`, `${majFakk}تُما`, `${majFakk}تُمْ`, `${majFakk}تِ`, `${majFakk}تُما`, `${majFakk}تُنَّ`,
+      `${majFakk}تُ`, `${majFakk}نا`
+    ];
+    const muMajBase = `ُسْتَ${f}َ${l}َّ`;
+    const muMajFakk = `ُسْتَ${f}ْ${l}َ${l}ْ`;
+    const muMajKasrah = `ُسْتَ${f}َ${l}ِّ`;
+    mudariMajhul = [
+      `ي${muMajBase}ُ`, `ي${muMajBase}انِ`, `ي${muMajBase}ونَ`, `ت${muMajBase}ُ`, `ت${muMajBase}انِ`, `ي${muMajFakk}نَ`,
+      `ت${muMajBase}ُ`, `ت${muMajBase}انِ`, `ت${muMajBase}ونَ`, `ت${muMajKasrah}ينَ`, `ت${muMajBase}انِ`, `ت${muMajFakk}نَ`,
+      `أ${muMajBase}ُ`, `ن${muMajBase}ُ`
+    ];
+  } else if (babId === "mufa'alah") {
+    const majBase = `${f}ُو${l}َّ`;
+    const majFakk = `${f}ُو${l}ِ${l}ْ`;
+    madiMajhul = [
+      `${majBase}َ`, `${majBase}ا`, `${majBase}ُوا`, `${majBase}َتْ`, `${majBase}َتا`, `${majFakk}نَ`,
+      `${majFakk}تَ`, `${majFakk}تُما`, `${majFakk}تُمْ`, `${majFakk}تِ`, `${majFakk}تُما`, `${majFakk}تُنَّ`,
+      `${majFakk}تُ`, `${majFakk}نا`
+    ];
+    const muMajBase = `ُ${f}ا${l}َّ`;
+    const muMajFakk = `ُ${f}ا${l}َ${l}ْ`;
+    const muMajKasrah = `ُ${f}ا${l}ِّ`;
+    mudariMajhul = [
+      `ي${muMajBase}ُ`, `ي${muMajBase}انِ`, `ي${muMajBase}ونَ`, `ت${muMajBase}ُ`, `ت${muMajBase}انِ`, `ي${muMajFakk}نَ`,
+      `ت${muMajBase}ُ`, `ت${muMajBase}انِ`, `ت${muMajBase}ونَ`, `ت${muMajKasrah}ينَ`, `ت${muMajBase}انِ`, `ت${muMajFakk}نَ`,
+      `أ${muMajBase}ُ`, `ن${muMajBase}ُ`
+    ];
+  } else if (babId === "ifti'al") {
+    const majBase = `اُ${f}ْتُ${l}َّ`;
+    const majFakk = `اُ${f}ْتُ${l}ِ${l}ْ`;
+    madiMajhul = [
+      `${majBase}َ`, `${majBase}ا`, `${majBase}ُوا`, `${majBase}َتْ`, `${majBase}َتا`, `${majFakk}نَ`,
+      `${majFakk}تَ`, `${majFakk}تُما`, `${majFakk}تُمْ`, `${majFakk}تِ`, `${majFakk}تُما`, `${majFakk}تُنَّ`,
+      `${majFakk}تُ`, `${majFakk}نا`
+    ];
+    const muMajBase = `ُ${f}ْتَ${l}َّ`;
+    const muMajFakk = `ُ${f}ْتَ${l}َ${l}ْ`;
+    const muMajKasrah = `ُ${f}ْتَ${l}ِّ`;
+    mudariMajhul = [
+      `ي${muMajBase}ُ`, `ي${muMajBase}انِ`, `ي${muMajBase}ونَ`, `ت${muMajBase}ُ`, `ت${muMajBase}انِ`, `ي${muMajFakk}نَ`,
+      `ت${muMajBase}ُ`, `ت${muMajBase}انِ`, `ت${muMajBase}ونَ`, `ت${muMajKasrah}ينَ`, `ت${muMajBase}انِ`, `ت${muMajFakk}نَ`,
+      `أ${muMajBase}ُ`, `ن${muMajBase}ُ`
+    ];
+  }
+
+  return { madi, mudari, amr, nahy, madiMajhul, mudariMajhul };
 }
 
