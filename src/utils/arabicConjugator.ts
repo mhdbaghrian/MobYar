@@ -635,3 +635,227 @@ export function generateMudariMajhul(root: string, babId: BabId): string[] | nul
 
   return null;
 }
+
+/**
+ * Generate 14 active, passive, amr & nahy forms for Triliteral Mudha'af (ثلاثی مجرد مضاعف)
+ * e.g. م د د (مَدَّ يَمُدُّ), ف ر ر (فَرَّ يَفِرُّ), م س س (مَسَّ يَمَسُّ)
+ */
+export function generateMudaafMujarrad(
+  root: string,
+  ainMadi: 'َ' | 'ِ' | 'ُ',
+  ainMudari: 'َ' | 'ِ' | 'ُ'
+): FullConjugationSet {
+  const parts = root.trim().split(/\s+/);
+  const f = parts[0];
+  const l = parts[parts.length - 1]; // Geminate letter
+
+  // Past Active (ماضی معلوم)
+  // صیغه‌های ۱ تا ۵ با ادغام واجب: مَدَّ، مَدَّا، مَدُّوا، مَدَّتْ، مَدَّتا
+  // صیغه‌های ۶ تا ۱۴ با فک ادغام: مَدَدْنَ، مَدَدْتَ، مَدَدْتُما...
+  const madiBaseMerged = `${f}َ${l}َّ`;
+  const madiBaseFakk = ainMadi === 'ِ' ? `${f}َ${l}ِ${l}ْ` : `${f}َ${l}َ${l}ْ`;
+
+  const madi = [
+    `${madiBaseMerged}َ`, // 1. هُوَ مَدَّ
+    `${madiBaseMerged}ا`, // 2. هُما مَدَّا
+    `${madiBaseMerged}ُوا`, // 3. هُمْ مَدُّوا
+    `${madiBaseMerged}َتْ`, // 4. هِيَ مَدَّتْ
+    `${madiBaseMerged}َتا`, // 5. هُما مَدَّتا
+    `${madiBaseFakk}نَ`, // 6. هُنَّ مَدَدْنَ
+    `${madiBaseFakk}تَ`, // 7. أَنْتَ مَدَدْتَ
+    `${madiBaseFakk}تُما`, // 8. أَنْتُما مَدَدْتُما
+    `${madiBaseFakk}تُمْ`, // 9. أَنْتُمْ مَدَدْتُمْ
+    `${madiBaseFakk}تِ`, // 10. أَنْتِ مَدَدْتِ
+    `${madiBaseFakk}تُما`, // 11. أَنْتُما مَدَدْتُما
+    `${madiBaseFakk}تُنَّ`, // 12. أَنْتُنَّ مَدَدْتُنَّ
+    `${madiBaseFakk}تُ`, // 13. أَنَا مَدَدْتُ
+    `${madiBaseFakk}نا`, // 14. نَحْنُ مَدَدْنا
+  ];
+
+  // Present Active (مضارع معلوم)
+  // ص ۱ تا ۵ و ۷ تا ۱۱ و ۱۳ و ۱۴: ادغام واجب (يَمُدُّ، يَمُدَّانِ، يَمُدُّونَ...)
+  // ص ۶ و ۱۲: فک ادغام واجب (يَمْدُدْنَ، تَمْدُدْنَ)
+  let muVowel = ainMudari;
+  let muMergedPrefix = `${f}${muVowel}${l}َّ`;
+  let muFakkStem = `${f}ْ${l}${muVowel}${l}ْ`;
+
+  const mudari = [
+    `يَ${muMergedPrefix}ُ`, // 1. يَمُدُّ
+    `يَ${muMergedPrefix}انِ`, // 2. يَمُدَّانِ
+    `يَ${muMergedPrefix}ونَ`, // 3. يَمُدُّونَ
+    `تَ${muMergedPrefix}ُ`, // 4. تَمُدُّ
+    `تَ${muMergedPrefix}انِ`, // 5. تَمُدَّانِ
+    `يَ${muFakkStem}نَ`, // 6. يَمْدُدْنَ
+    `تَ${muMergedPrefix}ُ`, // 7. تَمُدُّ
+    `تَ${muMergedPrefix}انِ`, // 8. تَمُدَّانِ
+    `تَ${muMergedPrefix}ونَ`, // 9. تَمُدُّونَ
+    `تَ${f}${muVowel}${l}ِّينَ`, // 10. تَمُدِّينَ
+    `تَ${muMergedPrefix}انِ`, // 11. تَمُدَّانِ
+    `تَ${muFakkStem}نَ`, // 12. تَمْدُدْنَ
+    `أَ${muMergedPrefix}ُ`, // 13. أَمُدُّ
+    `نَ${muMergedPrefix}ُ`, // 14. نَمُدُّ
+  ];
+
+  // Past Passive (ماضی مجهول)
+  // ص ۱ تا ۵: مُدَّ / ص ۶ تا ۱۴: مُدِدْنَ
+  const madiMajhulBase = `مُ${l}َّ`;
+  const madiMajhulFakk = `${f}ُ${l}ِ${l}ْ`;
+  const madiMajhul = [
+    `${f}ُ${l}ََّ`,
+    `${f}ُ${l}َّا`,
+    `${f}ُ${l}َُّوا`,
+    `${f}ُ${l}ََّتْ`,
+    `${f}ُ${l}ََّتا`,
+    `${madiMajhulFakk}نَ`,
+    `${madiMajhulFakk}تَ`,
+    `${madiMajhulFakk}تُما`,
+    `${madiMajhulFakk}تُمْ`,
+    `${madiMajhulFakk}تِ`,
+    `${madiMajhulFakk}تُما`,
+    `${madiMajhulFakk}تُنَّ`,
+    `${madiMajhulFakk}تُ`,
+    `${madiMajhulFakk}نا`,
+  ];
+
+  // Present Passive (مضارع مجهول)
+  // ص ۱ تا ۵: يُمَدُّ / ص ۶: يُمْدَدْنَ / ص ۱۲: تُمْدَدْنَ
+  const mudariMajhulBase = `${f}َ${l}َّ`;
+  const mudariMajhulFakk = `${f}ْ${l}َ${l}ْ`;
+  const mudariMajhul = [
+    `يُ${mudariMajhulBase}ُ`,
+    `يُ${mudariMajhulBase}انِ`,
+    `يُ${mudariMajhulBase}ونَ`,
+    `تُ${mudariMajhulBase}ُ`,
+    `تُ${mudariMajhulBase}انِ`,
+    `يُ${mudariMajhulFakk}نَ`,
+    `تُ${mudariMajhulBase}ُ`,
+    `تُ${mudariMajhulBase}انِ`,
+    `تُ${mudariMajhulBase}ونَ`,
+    `تُ${f}َ${l}ِّينَ`,
+    `تُ${mudariMajhulBase}انِ`,
+    `تُ${mudariMajhulFakk}نَ`,
+    `أُ${mudariMajhulBase}ُ`,
+    `نُ${mudariMajhulBase}ُ`,
+  ];
+
+  // Amr (امر)
+  // امر مخاطب (ص ۷ تا ۱۲): مُدَّ، مُدَّا، مُدُّوا، مُدِّي، مُدَّا، اُُمْدُدْنَ
+  const amrPrefixHader = `${f}${muVowel}${l}َّ`;
+  const hamzahAmr = muVowel === 'ُ' ? 'اُ' : 'اِ';
+  const amr = [
+    `لِيَ${muMergedPrefix}َ`, // 1
+    `لِيَ${muMergedPrefix}انِ`,
+    `لِيَ${muMergedPrefix}ونَ`,
+    `لِتَ${muMergedPrefix}َ`,
+    `لِتَ${muMergedPrefix}انِ`,
+    `لِيَ${muFakkStem}نَ`,
+    `${amrPrefixHader}َ`, // 7. مُدَّ / فِرَّ / مَسَّ
+    `${amrPrefixHader}ا`, // 8. مُدَّا
+    `${amrPrefixHader}ُوا`, // 9. مُدُّوا
+    `${f}${muVowel}${l}ِّي`, // 10. مُدِّي
+    `${amrPrefixHader}ا`, // 11. مُدَّا
+    `${hamzahAmr}${muFakkStem}نَ`, // 12. اُُمْدُدْنَ / اِفْرِرْنَ / اِمْسَسْنَ
+    `لِأَ${muMergedPrefix}َ`,
+    `لِنَ${muMergedPrefix}َ`,
+  ];
+
+  // Nahy (نهی)
+  const nahy = [
+    `لا يَ${muMergedPrefix}َ`,
+    `لا يَ${muMergedPrefix}ا`,
+    `لا يَ${muMergedPrefix}وا`,
+    `لا تَ${muMergedPrefix}َ`,
+    `لا تَ${muMergedPrefix}ا`,
+    `لا يَ${muFakkStem}نَ`,
+    `لا تَ${muMergedPrefix}َ`,
+    `لا تَ${muMergedPrefix}ا`,
+    `لا تَ${muMergedPrefix}وا`,
+    `لا تَ${f}${muVowel}${l}ِي`,
+    `لا تَ${muMergedPrefix}ا`,
+    `لا تَ${muFakkStem}نَ`,
+    `لا أَ${muMergedPrefix}َ`,
+    `لا نَ${muMergedPrefix}َ`,
+  ];
+
+  return { madi, mudari, amr, nahy, madiMajhul, mudariMajhul };
+}
+
+/**
+ * Generate 14 active, passive, amr & nahy forms for Augmented Mudha'af (ثلاثی مزید مضاعف)
+ * e.g. أَمَدَّ يُمِدُّ (إفعال)، اِمْتَدَّ يَمْتَدُّ (افتعال)، اِنْشَقَّ يَنْشَقُّ (انفعال)، اِسْتَمَدَّ يَسْتَمِدُّ (استفعال)
+ */
+export function generateMudaafAugmented(root: string, babId: BabId): FullConjugationSet | null {
+  const parts = root.trim().split(/\s+/);
+  const f = parts[0];
+  const l = parts[parts.length - 1];
+
+  let mBase = '';
+  let mFakk = '';
+  let muBase = '';
+  let muFakk = '';
+  let amr7 = '';
+  let amr12 = '';
+
+  if (babId === "if'al") {
+    // إفعال: أَمَدَّ - يُمِدُّ
+    mBase = `أَ${f}َ${l}َّ`;
+    mFakk = `أَ${f}ْ${l}َ${l}ْ`;
+    muBase = `ُ${f}ِ${l}َّ`;
+    muFakk = `ُ${f}ْ${l}ِ${l}ْ`;
+    amr7 = `أَ${f}ِ${l}َّ`;
+    amr12 = `أَ${f}ْ${l}ِ${l}ْنَ`;
+  } else if (babId === "ifti'al") {
+    // افتعال: اِمْتَدَّ - يَمْتَدُّ
+    mBase = `اِمْ${f}َ${l}َّ`;
+    mFakk = `اِمْ${f}َ${l}َ${l}ْ`;
+    muBase = `َمْ${f}َ${l}َّ`;
+    muFakk = `َمْ${f}َ${l}ِ${l}ْ`;
+    amr7 = `اِمْ${f}َ${l}َّ`;
+    amr12 = `اِمْ${f}َ${l}ِ${l}ْنَ`;
+  } else if (babId === "infi'al") {
+    // انفعال: اِنْشَقَّ - يَنْشَقُّ
+    mBase = `اِنْ${f}َ${l}َّ`;
+    mFakk = `اِنْ${f}َ${l}َ${l}ْ`;
+    muBase = `َنْ${f}َ${l}َّ`;
+    muFakk = `َنْ${f}َ${l}ِ${l}ْ`;
+    amr7 = `اِنْ${f}َ${l}َّ`;
+    amr12 = `اِنْ${f}َ${l}ِ${l}ْنَ`;
+  } else if (babId === "istif'al") {
+    // استفعال: اِسْتَمَدَّ - يَسْتَمِدُّ
+    mBase = `اِسْتَ${f}َ${l}َّ`;
+    mFakk = `اِسْتَ${f}ْ${l}َ${l}ْ`;
+    muBase = `َسْتَ${f}ِ${l}َّ`;
+    muFakk = `َسْتَ${f}ْ${l}ِ${l}ْ`;
+    amr7 = `اِسْتَ${f}ِ${l}َّ`;
+    amr12 = `اِسْتَ${f}ْ${l}ِ${l}ْنَ`;
+  } else {
+    return null;
+  }
+
+  const madi = [
+    `${mBase}َ`, `${mBase}ا`, `${mBase}ُوا`, `${mBase}َتْ`, `${mBase}َتا`, `${mFakk}نَ`,
+    `${mFakk}تَ`, `${mFakk}تُما`, `${mFakk}تُمْ`, `${mFakk}تِ`, `${mFakk}تُما`, `${mFakk}تُنَّ`,
+    `${mFakk}تُ`, `${mFakk}نا`
+  ];
+
+  const mudari = [
+    `ي${muBase}ُ`, `ي${muBase}انِ`, `ي${muBase}ونَ`, `ت${muBase}ُ`, `ت${muBase}انِ`, `ي${muFakk}نَ`,
+    `ت${muBase}ُ`, `ت${muBase}انِ`, `ت${muBase}ونَ`, `ت${f}ِ${l}ِّينَ`, `ت${muBase}انِ`, `ت${muFakk}نَ`,
+    `أ${muBase}ُ`, `ن${muBase}ُ`
+  ];
+
+  const amr = [
+    `لِي${muBase}َ`, `لِي${muBase}انِ`, `لِي${muBase}ونَ`, `لِت${muBase}َ`, `لِت${muBase}انِ`, `لِي${muFakk}نَ`,
+    `${amr7}َ`, `${amr7}ا`, `${amr7}ُوا`, `${amr7.slice(0, -1)}ِي`, `${amr7}ا`, `${amr12}`,
+    `لِأ${muBase}َ`, `لِن${muBase}َ`
+  ];
+
+  const nahy = [
+    `لا ي${muBase}َ`, `لا ي${muBase}ا`, `لا ي${muBase}وا`, `لا ت${muBase}َ`, `لا ت${muBase}ا`, `لا ي${muFakk}نَ`,
+    `لا ت${muBase}َ`, `لا ت${muBase}ا`, `لا ت${muBase}وا`, `لا ت${f}ِ${l}ِي`, `لا ت${muBase}ا`, `لا ت${muFakk}نَ`,
+    `لا أ${muBase}َ`, `لا ن${muBase}َ`
+  ];
+
+  return { madi, mudari, amr, nahy };
+}
+

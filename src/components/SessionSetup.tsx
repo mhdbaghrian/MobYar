@@ -62,6 +62,21 @@ interface QuickPreset {
 
 const QUICK_PRESETS: QuickPreset[] = [
   {
+    id: 'mudaaf_challenge',
+    title: 'کارگاه افعال مضاعف و احکام ادغام',
+    subtitle: 'تمرین تخصصی ادغام واجب، فک ادغام، امر مضاعف و شواهد قرآنی (مَدَّ، فَرَّ، مَسَّ)',
+    badge: 'فعل مضاعف & ادغام',
+    badgeColor: 'bg-amber-100 text-amber-800 border-amber-300',
+    icon: <Flame className="w-5 h-5 text-amber-700" />,
+    mode: 'solo',
+    studentsCount: 1,
+    babIds: ['mujarrad_nasara', 'mujarrad_daraba', 'mujarrad_alima', "if'al", "istif'al"],
+    types: ['mudaaf_fakk', 'mudaaf_conjugation', 'amr', 'targeted'],
+    rounds: 8,
+    answerMethod: 'choice',
+    popular: true,
+  },
+  {
     id: 'comprehensive_exam',
     title: 'آزمون جامع صرف (افعال و مشتقات)',
     subtitle: 'سنجش کامل تسلط بر ماضی، مضارع، امر، نهی و مشتقات هشت‌گانه',
@@ -842,6 +857,8 @@ export const SessionSetup: React.FC<SessionSetupProps> = ({
               {(domainFilter === 'both' || domainFilter === 'verbs') && (
                 <>
                   {[
+                    { id: 'mudaaf_fakk', title: 'احکام ادغام و فک ادغام (مضاعف)', desc: 'ادغام واجب، ممتنع و جائز' },
+                    { id: 'mudaaf_conjugation', title: 'صرف افعال مضاعف', desc: 'مَدَّ، فَرَّ، مَسَّ، أَمَدَّ...' },
                     { id: 'targeted', title: 'نقطه‌زنی صیغه (ریشه+باب)', desc: 'صیغه ۵ در باب إفعال' },
                     { id: 'translation', title: 'تطبیق ترجمه فارسی', desc: 'معادل عربی «یاری کردید»' },
                     { id: 'tense_inversion', title: 'تبدیل ماضی ↔ مضارع', desc: 'أَکْرَمَ به مضارع' },

@@ -2,6 +2,8 @@ import { VerbConjugation } from '../types/sarf';
 import {
   generateSoundConjugation,
   generateAugmentedConjugation,
+  generateMudaafMujarrad,
+  generateMudaafAugmented,
   generateNahy,
   generateNahyMajhul,
   generateNafyMadi,
@@ -12,6 +14,88 @@ import {
   generateMadiMajhul,
   generateMudariMajhul,
 } from '../utils/arabicConjugator';
+
+function createMudaafMujarrad(
+  root: string,
+  ainMadi: 'َ' | 'ِ' | 'ُ',
+  ainMudari: 'َ' | 'ِ' | 'ُ',
+  meaningBase: string,
+  persianPrefix: string,
+  persianMadi: string,
+  persianMudari: string,
+  masdar?: string,
+  quranicAyah?: string
+): VerbConjugation {
+  const forms = generateMudaafMujarrad(root, ainMadi, ainMudari);
+  let babId: any = 'mujarrad_nasara';
+  if (ainMadi === 'َ' && ainMudari === 'ُ') babId = 'mujarrad_nasara';
+  else if (ainMadi === 'َ' && ainMudari === 'ِ') babId = 'mujarrad_daraba';
+  else if (ainMadi === 'ِ' && ainMudari === 'َ') babId = 'mujarrad_alima';
+
+  const isTransitive = true;
+  const nafyMadi = generateNafyMadi(forms.madi);
+  const nafyMudari = generateNafyMudari(forms.mudari);
+  const nafyMadiMajhul = forms.madiMajhul ? generateNafyMadiMajhul(forms.madiMajhul) : undefined;
+  const nafyMudariMajhul = forms.mudariMajhul ? generateNafyMudariMajhul(forms.mudariMajhul) : undefined;
+  const nahyMajhul = forms.mudariMajhul ? generateNahyMajhul(forms.mudariMajhul) : undefined;
+
+  return {
+    root,
+    babId,
+    meaningBase,
+    masdar,
+    verbType: 'mudaaf',
+    isTransitive,
+    quranicAyah,
+    persianStem: { prefix: persianPrefix, stemMadi: persianMadi, stemMudari: persianMudari },
+    madi: forms.madi,
+    mudari: forms.mudari,
+    amr: forms.amr,
+    nahy: forms.nahy,
+    nahyMajhul,
+    madiMajhul: forms.madiMajhul,
+    mudariMajhul: forms.mudariMajhul,
+    nafyMadi,
+    nafyMudari,
+    nafyMadiMajhul,
+    nafyMudariMajhul,
+  };
+}
+
+function createMudaafAugmented(
+  root: string,
+  babId: any,
+  meaningBase: string,
+  persianPrefix: string,
+  persianMadi: string,
+  persianMudari: string,
+  masdar?: string,
+  quranicAyah?: string
+): VerbConjugation {
+  const forms = generateMudaafAugmented(root, babId);
+  if (!forms) throw new Error(`Failed to generate mudaaf augmented forms for ${root} in ${babId}`);
+
+  const isTransitive = babId !== "infi'al";
+  const nafyMadi = generateNafyMadi(forms.madi);
+  const nafyMudari = generateNafyMudari(forms.mudari);
+
+  return {
+    root,
+    babId,
+    meaningBase,
+    masdar,
+    verbType: 'mudaaf',
+    isTransitive,
+    quranicAyah,
+    persianStem: { prefix: persianPrefix, stemMadi: persianMadi, stemMudari: persianMudari },
+    madi: forms.madi,
+    mudari: forms.mudari,
+    amr: forms.amr,
+    nahy: forms.nahy,
+    nafyMadi,
+    nafyMudari,
+  };
+}
 
 function createSoundMujarrad(
   root: string,
@@ -118,6 +202,26 @@ function createAugmented(
 }
 
 export const COMPREHENSIVE_VERB_LIBRARY: VerbConjugation[] = [
+  // =========================================================================
+  // افعال مضاعف (الفعل المضاعف - ثلاثی مجرد، مزید و رباعی)
+  // =========================================================================
+  createMudaafMujarrad('م د د', 'َ', 'ُ', 'کشید / گسترد / یاری داد', 'کش', 'ید', 'کش', 'مَدّاً', 'أَلَمْ تَرَ إِلَى رَبِّکَ کَيْفَ مَدَّ الظِّلَّ'),
+  createMudaafMujarrad('ف ر ر', 'َ', 'ِ', 'گریخت / فرار کرد', 'فرار', 'کرد', 'کن', 'فِراراً', 'فَفِرُّوا إِلَى اللَّهِ إِنِّي لَکُمْ مِنْهُ نَذِيرٌ'),
+  createMudaafMujarrad('م س س', 'ِ', 'َ', 'لمس کرد / دست زد', '', 'رسید', 'رس', 'مَسّاً', 'إِنْ تَمْسَسْکُمْ حَسَنَةٌ تَسُؤْهُمْ'),
+  createMudaafMujarrad('ش د د', 'َ', 'ُ', 'محکم بست / استوار ساخت', 'محکم', 'ساخت', 'ساز', 'شَدّاً', 'اشْدُدْ بِهِ أَزْرِي'),
+  createMudaafMujarrad('ع د د', 'َ', 'ُ', 'شمرد / برشمرد', '', 'شمرد', 'شمار', 'عَدّاً', 'وَاحْصَى کُلَّ شَيْءٍ عَدَداً'),
+  createMudaafMujarrad('ص د د', 'َ', 'ُ', 'بازداشت / روی گردانید', 'باز', 'داشت', 'دار', 'صَدّاً', 'وَيَصُدُّونَ عَنْ سَبِيلِ اللَّهِ'),
+  createMudaafMujarrad('ك ف ف', 'َ', 'ُ', 'خودداری کرد / بازداشت', 'خودداری', 'کرد', 'کن', 'کَفّاً', 'وَکَفَّ أَيْدِيَهُمْ عَنْکُمْ'),
+  createMudaafMujarrad('خ ف ف', 'َ', 'ِ', 'سبک شد', 'سبک', 'شد', 'شو', 'خِفَّةً', 'انْفِرُوا خِفَافاً وَثِقَالاً'),
+  createMudaafMujarrad('ظ ل ل', 'ِ', 'َ', 'پیوسته ماند / ادامه داد', 'پیوسته', 'ماند', 'مان', 'ظَلّاً', 'فَظَلَّتْ أَعْنَاقُهُمْ لَهَا خَاضِعِينَ'),
+  createMudaafMujarrad('و د د', 'ِ', 'َ', 'دوست داشت / مشتاق بود', 'دوست', 'داشت', 'دار', 'وُدّاً', 'يَوَدُّ أَحَدُهُمْ لَوْ يُعَمَّرُ أَلْفَ سَنَةٍ'),
+  createMudaafMujarrad('ح ج ج', 'َ', 'ُ', 'قصد کرد / حج گزارد', 'حج', 'کرد', 'کن', 'حَجّاً', 'وَلِلَّهِ عَلَى النَّاسِ حِجُّ الْبَيْتِ'),
+
+  createMudaafAugmented('م د د', "if'al", 'امداد کرد / کمک فرستاد', 'امداد', 'کرد', 'کن', 'إِمْداداً', 'يُمِدَّکُمْ رَبُّکُمْ بِخَمْسَةِ آلَافٍ'),
+  createMudaafAugmented('م د د', "ifti'al", 'امتداد یافت / کشیده شد', 'امتداد', 'یافت', 'یاب', 'اِمْتِداداً', ''),
+  createMudaafAugmented('ش ق ق', "infi'al", 'شکافته شد / دو نیم گشت', 'شکافته', 'شد', 'شو', 'اِنْشِقاقاً', 'إِذَا السَّمَاءُ انْشَقَّتْ'),
+  createMudaafAugmented('م د د', "istif'al", 'کمک خواست / استمداد کرد', 'کمک', 'خواست', 'خواه', 'اِسْتِمْداداً', 'إِذْ تَسْتَغِيثُونَ رَبَّکُمْ'),
+
   // =========================================================================
   // ۱. ثلاثی مجرد - باب اول: فَعَلَ يَفْعُلُ (نَصَرَ يَنْصُرُ)
   // =========================================================================

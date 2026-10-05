@@ -221,6 +221,18 @@ export default function App() {
     handleStartSession(nounConfig);
   };
 
+  const handleStartMudaafDrill = () => {
+    const mudaafConfig: SessionConfig = {
+      mode: 'solo',
+      students: [{ id: 's1', name: 'دانشجو', avatarSeed: '1', color: 'bg-amber-600' }],
+      selectedBabIds: ['mujarrad_nasara', 'mujarrad_daraba', 'mujarrad_alima', "if'al", "istif'al"],
+      selectedQuestionTypes: ['mudaaf_fakk', 'mudaaf_conjugation', 'amr', 'targeted'],
+      roundsPerStudent: 8,
+      soloAnswerMethod: 'choice',
+    };
+    handleStartSession(mudaafConfig);
+  };
+
   // Calculate current Asker and Answerer based on mode
   let currentAsker: Student | undefined;
   let currentAnswerer: Student | undefined;
@@ -365,6 +377,7 @@ export default function App() {
         isOpen={isWorkshopOpen}
         onClose={() => setIsWorkshopOpen(false)}
         onSelectBabForSession={handleSelectBabForSession}
+        onStartMudaafDrill={handleStartMudaafDrill}
       />
 
       <FourteenSeeghehModal

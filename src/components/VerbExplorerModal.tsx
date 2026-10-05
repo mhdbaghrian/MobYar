@@ -16,7 +16,7 @@ export const VerbExplorerModal: React.FC<VerbExplorerModalProps> = ({
   onSelectBabForSession,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<'all' | 'thulathi_mujarrad' | 'thulathi_mazid' | 'rubai'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'mudaaf' | 'thulathi_mujarrad' | 'thulathi_mazid' | 'rubai'>('all');
   const [selectedBabFilter, setSelectedBabFilter] = useState<string>('all');
   const [expandedVerbKey, setExpandedVerbKey] = useState<string | null>(null);
   const [playingWord, setPlayingWord] = useState<string | null>(null);
@@ -25,7 +25,9 @@ export const VerbExplorerModal: React.FC<VerbExplorerModalProps> = ({
     return VERB_LIBRARY.filter((v) => {
       // Category filter
       const bab = getBabById(v.babId);
-      if (selectedCategory === 'thulathi_mujarrad') {
+      if (selectedCategory === 'mudaaf') {
+        if (v.verbType !== 'mudaaf') return false;
+      } else if (selectedCategory === 'thulathi_mujarrad') {
         if (!v.babId.startsWith('mujarrad')) return false;
       } else if (selectedCategory === 'thulathi_mazid') {
         if (bab.category !== 'thulathi_mazid') return false;
@@ -149,6 +151,7 @@ export const VerbExplorerModal: React.FC<VerbExplorerModalProps> = ({
             </span>
             {[
               { id: 'all', label: 'همه افعال' },
+              { id: 'mudaaf', label: 'افعال مضاعف (مَدَّ، فَرَّ...)' },
               { id: 'thulathi_mujarrad', label: 'ثلاثی مجرد (شش باب)' },
               { id: 'thulathi_mazid', label: 'ثلاثی مزید (۱۰ باب)' },
               { id: 'rubai', label: 'رباعی مجرد و مزید' },

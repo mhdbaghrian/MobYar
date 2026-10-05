@@ -635,7 +635,148 @@ export function generateQuestion(
     };
   }
 
-  // 9. نوع نهم: نفی (ماضی و مضارع معلوم و مجهول)
+  // 9. نوع نهم: احکام ادغام و فک ادغام در افعال مضاعف (مضاعف و ادغام)
+  if (type === 'mudaaf_fakk' || type === 'mudaaf_conjugation') {
+    const mudaafVerbs = VERB_LIBRARY.filter((v) => v.verbType === 'mudaaf');
+    const mVerb = mudaafVerbs.length > 0 ? getRandomItem(mudaafVerbs) : verb;
+    const mBab = getBabById(mVerb.babId);
+
+    const fakkSubtype = Math.floor(Math.random() * 4);
+
+    if (fakkSubtype === 0 || type === 'mudaaf_conjugation') {
+      // صیغه‌های دارای فک ادغام (ص ۶ تا ۱۴ ماضی یا ص ۶ و ۱۲ مضارع)
+      const isPastFakk = Math.random() > 0.5;
+      const fakkIndex = isPastFakk ? 5 + Math.floor(Math.random() * 9) : Math.random() > 0.5 ? 5 : 11; // 5 = ص ۶, 11 = ص ۱۲
+      const sInfo = SEEGHEHS[fakkIndex];
+      const correctForm = isPastFakk ? mVerb.madi[fakkIndex] : mVerb.mudari[fakkIndex];
+
+      const distractors = [
+        isPastFakk ? mVerb.madi[0] + 'ْنَ' : mVerb.mudari[0] + 'ْنَ',
+        isPastFakk ? mVerb.madi[0] : mVerb.mudari[0],
+        isPastFakk ? mVerb.madi[1] : mVerb.mudari[1],
+      ];
+      const options = shuffleArray(Array.from(new Set([correctForm, ...distractors]))).slice(0, 4);
+
+      return {
+        id,
+        type,
+        babId: mVerb.babId,
+        babName: mBab.name,
+        root: mVerb.root,
+        title: `صرف و فک ادغام فعل مضاعف (${isPastFakk ? 'ماضی' : 'مضارع'})`,
+        prompt: `کدام گزینه صورت صحیح صیغه ${sInfo.index} (${sInfo.nameFa} - «${sInfo.pronoun}») از فعل مضاعف «${mVerb.madi[0]} / ${mVerb.mudari[0]}» بر وزن ${mBab.name} است؟`,
+        subPrompt: `ریشه: [ ${mVerb.root} ] · معنا: «${mVerb.meaningBase}» · توجه به حکم فک ادغام`,
+        targetSeegheh: sInfo,
+        correctAnswer: correctForm,
+        options,
+        explanation: `پاسخ صحیح: «${correctForm}» است. در افعال مضاعف (که دو حرف اصلی یکسان دارند)، هرگاه حرف دوم ساکن شود (به علت اتصال به ضمائر بارز متحرک مانند نون نسوه یا تاء فاعل)، ادغام گشوده شده و «فک ادغام» رخ می‌دهد (مانند مَدَدْنَ، مَدَدْتَ، يَمْدُدْنَ).`,
+        pedagogicalTip: `قانون کلیدی مضاعف: در ماضی از صیغه ۶ تا ۱۴ (هنّ تا نحن) و در مضارع در صیغه ۶ و ۱۲ (هنّ و انتنّ) فک ادغام واجب است.`,
+      };
+    } else if (fakkSubtype === 1) {
+      // امر حاضر افعال مضاعف (مُدَّ / أُمُدُدْ یا ص ۱۲: اُُمْدُدْنَ)
+      const sIndex = Math.random() > 0.3 ? 6 : 11; // ص ۷ (أنت) یا ص ۱۲ (أنتن)
+      const sInfo = SEEGHEHS[sIndex];
+      const correctForm = mVerb.amr ? mVerb.amr[sIndex] : `مُدَّ`;
+
+      const options = shuffleArray([
+        correctForm,
+        mVerb.madi[0],
+        mVerb.mudari[sIndex],
+        sIndex === 6 ? `اُمْدُدْ` : `مُدْنَ`,
+      ]);
+
+      return {
+        id,
+        type,
+        babId: mVerb.babId,
+        babName: mBab.name,
+        root: mVerb.root,
+        title: `امر حاضر در افعال مضاعف`,
+        prompt: `صورت امر حاضر صیغه ${sInfo.index} (${sInfo.nameFa} - «${sInfo.pronoun}») برای فعل مضاعف «${mVerb.madi[0]} / ${mVerb.mudari[0]}» کدام است؟`,
+        subPrompt: `ریشه: [ ${mVerb.root} ] · باب: ${mBab.name}`,
+        targetSeegheh: sInfo,
+        correctAnswer: correctForm,
+        options,
+        explanation: `پاسخ صحیح: «${correctForm}» است. در امر حاضر مفرد مذکر مخاطب فعل مضاعف، ادغام می‌تواند باقی بماند (مُدَّ / فِرَّ / مَسَّ) یا باز شود (أُمُدُدْ/اِفْرِرْ)؛ اما در جمع مؤنث مخاطب (صیغه ۱۲) فک ادغام و آوردن همزه امر الزامی است (اُُمْدُدْنَ/اِفْرِرْنَ/اِمْسَسْنَ).`,
+        pedagogicalTip: `در امر حاضر صیغه ۷ فعل مضاعف حرکت آخر به فتح تغییر می‌کند و ادغام جائز است.`,
+      };
+    } else if (fakkSubtype === 2) {
+      // حکم‌شناسی کلی ادغام (واجب، ممتنع/فک، جائز)
+      const qCase = Math.floor(Math.random() * 3);
+      let title = '';
+      let prompt = '';
+      let correctForm = '';
+      let explanation = '';
+
+      if (qCase === 0) {
+        title = 'شناخت ادغام واجب';
+        prompt = 'در کدام‌یک از صیغه‌های زیر در فعل مضاعف، «ادغام واجب» است؟';
+        correctForm = 'صیغه‌های ۱ تا ۵ ماضی (مَدَّ، مَدَّا...)';
+        explanation = 'هرگاه دو حرف متماثل متحرک باشند یا اولی ساکن و دومی متحرک، ادغام واجب است (مانند مَدَّ، يَمُدُّ).';
+      } else if (qCase === 1) {
+        title = 'شناخت ادغام ممتنع (فک ادغام)';
+        prompt = 'در کدام صیغه‌های فعل مضاعف، «ادغام ممتنع» است و فک ادغام (گشودن ادغام) رخ می‌دهد؟';
+        correctForm = 'صیغه‌های ۶ تا ۱۴ ماضی و صیغه ۶ و ۱۲ مضارع';
+        explanation = 'به دلیل اتصال ضمائر بارز متحرک (ـْنَ، ـْتَ، ـْتُ...) و ساکن شدن لام‌الفعل، ادغام ممتنع و فک ادغام واجب می‌گردد.';
+      } else {
+        title = 'شناخت ادغام جائز';
+        prompt = 'در کدام حالت از فعل مضاعف، ادغام «جائز» (هم ادغام و هم فک ادغام مجاز) است؟';
+        correctForm = 'حالت جزم مفرد و امر حاضر صیغه ۷ (لَمْ يَمُدَّ / لَمْ يَمْدُدْ)';
+        explanation = 'در مضارع مجزوم مفرد و امر حاضر مفرد مذکر (مانند لَمْ يَمُدَّ / لَمْ يَمْدُدْ و مُدَّ / أُمُدُدْ)، هر دو وجه جایز است.';
+      }
+
+      const options = shuffleArray([
+        correctForm,
+        'تمام صیغه‌های ۱۴گانه بدون استثنا',
+        'فقط در باب‌های ثلاثی مزید',
+        'فقط در حالت مجهول',
+      ]);
+
+      return {
+        id,
+        type,
+        babId: mVerb.babId,
+        babName: mBab.name,
+        root: mVerb.root,
+        title,
+        prompt,
+        subPrompt: `احکام سه‌گانه ادغام در صرف (واجب، ممتنع، جائز)`,
+        correctAnswer: correctForm,
+        options,
+        explanation,
+        pedagogicalTip: `ادغام دارای ۳ حکم است: واجب (مانند مَدَّ)، ممتنع/فک ادغام (مانند مَدَدْنَ) و جائز (مانند لَمْ يَمُدَّ/يَمْدُدْ).`,
+      };
+    } else {
+      // شاهد قرآنی فعل مضاعف
+      const quranVerbs = VERB_LIBRARY.filter((v) => v.verbType === 'mudaaf' && v.quranicAyah);
+      const qv = quranVerbs.length > 0 ? getRandomItem(quranVerbs) : mVerb;
+      const correctForm = qv.madi[0];
+
+      const options = shuffleArray([
+        correctForm,
+        'نَصَرَ',
+        'كَتَبَ',
+        'جَعَلَ',
+      ]);
+
+      return {
+        id,
+        type,
+        babId: qv.babId,
+        babName: getBabById(qv.babId).name,
+        root: qv.root,
+        title: 'شاهد قرآنی فعل مضاعف',
+        prompt: `در آیه مبارکه ﴿ ${qv.quranicAyah} ﴾، کدام فعل نمونه‌ای از «فعل مضاعف» است؟`,
+        subPrompt: `ریشه: [ ${qv.root} ] · معنا: «${qv.meaningBase}»`,
+        correctAnswer: correctForm,
+        options,
+        explanation: `پاسخ صحیح: «${correctForm}» است. ریشه این فعل [ ${qv.root} ] بوده و دو حرف پایانی آن یکسان است که دچار ادغام شده‌اند.`,
+        pedagogicalTip: `افعال مضاعف در قرآن بسیار پرکاربردند (مانند مَدَّ، صَدَّ، مَسَّ، زَلْزَلَ).`,
+      };
+    }
+  }
+
+  // 10. نوع دهم: نفی (ماضی و مضارع معلوم و مجهول)
   const nafyVerb = verb;
   const seeghehIdx = Math.floor(Math.random() * 14);
   const targetSeegheh = SEEGHEHS[seeghehIdx];
